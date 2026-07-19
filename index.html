@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Parcel Quest — Gamified Parcel Tracker</title>
+<style>
+  :root {
+    --bg: #0f0f1a;
+    --surface: #16162a;
+    --surface-raised: #1e1e3a;
+    --surface-strong: #252550;
+    --border: #2a2a55;
+    --text: #e8e8f0;
+    --text-secondary: #a0a0c0;
+    --text-muted: #6a6a90;
+    --accent: #7c5cff;
+    --accent-glow: rgba(124, 92, 255, 0.3);
+    --success: #4ade80;
+    --warning: #fbbf24;
+    --danger: #f87171;
+    --info: #60a5fa;
+    --xp: #fbbf24;
+    --level: #f472b6;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.5;
+  }
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 24px;
+    flex-wrap: wrap; gap: 16px;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 1.6rem; font-weight: 800; letter-spacing: -0.5px;
+  }
+  .logo-icon {
+    width: 44px; height: 44px; border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; box-shadow: 0 0 20px var(--accent-glow);
+  }
+  .subtitle { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; }
+
+  .level-card {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px 24px;
+    display: flex; align-items: center; gap: 20px;
+    margin-bottom: 24px;
+    position: relative; overflow: hidden;
+  }
+  .level-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--level), var(--warning));
+  }
+  .level-badge {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--level));
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 1.6rem; flex-shrink: 0;
+    box-shadow: 0 0 30px rgba(124, 92, 255, 0.25);
+  }
+  .level-badge small { font-size: 0.55rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
+  .level-info { flex: 1; }
+  .level-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 4px; }
+  .level-subtitle { color: var(--text-secondary); font-size: 0.85rem; }
+  .xp-bar-container {
+    width: 100%; height: 10px; background: var(--surface-strong);
+    border-radius: 5px; margin-top: 10px; overflow: hidden;
+  }
+  .xp-bar {
+    height: 100%; border-radius: 5px;
+    background: linear-gradient(90deg, var(--accent), var(--warning));
+    transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  .xp-bar::after {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    animation: shimmer 2s infinite;
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+  .xp-text {
+    display: flex; justify-content: space-between; margin-top: 6px;
+    font-size: 0.75rem; color: var(--text-muted); font-weight: 600;
+  }
+  .xp-gain {
+    position: absolute; right: 24px; top: 50%; transform: translateY(-50%);
+    text-align: right;
+  }
+  .xp-gain .big { font-size: 1.8rem; font-weight: 800; color: var(--xp); }
+  .xp-gain .small { font-size: 0.75rem; color: var(--text-secondary); }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+    transition: transform 0.2s, border-color 0.2s;
+    cursor: pointer;
+  }
+  .stat-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .stat-card.active { border-color: var(--accent); background: var(--surface-raised); }
+  .stat-icon { font-size: 1.5rem; margin-bottom: 6px; }
+  .stat-value { font-size: 1.4rem; font-weight: 800; }
+  .stat-label { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; }
+
+  .achievements-section { margin-bottom: 24px; }
+  .section-title {
+    font-size: 1rem; font-weight: 700; margin-bottom: 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .achievements-grid {
+    display: flex; flex-wrap: wrap; gap: 10px;
+  }
+  .achievement {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 8px 14px;
+    font-size: 0.8rem;
+    transition: all 0.3s;
+  }
+  .achievement.unlocked {
+    border-color: var(--warning);
+    background: linear-gradient(135deg, rgba(251,191,36,0.1), rgba(124,92,255,0.05));
+    box-shadow: 0 0 15px rgba(251,191,36,0.1);
+  }
+  .achievement.locked {
+    opacity: 0.4;
+    filter: grayscale(1);
+  }
+  .achievement-icon { font-size: 1.1rem; }
+
+  .controls {
+    display: flex; gap: 12px; margin-bottom: 16px;
+    flex-wrap: wrap; align-items: center;
+  }
+  .search-box {
+    flex: 1; min-width: 200px;
+    position: relative;
+  }
+  .search-box input {
+    width: 100%; padding: 10px 14px 10px 38px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text); font-size: 0.9rem;
+    outline: none; transition: border-color 0.2s;
+  }
+  .search-box input:focus { border-color: var(--accent); }
+  .search-box::before {
+    content: "🔍"; position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 0.9rem; opacity: 0.5;
+  }
+  .filter-select {
+    padding: 10px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text); font-size: 0.9rem;
+    outline: none; cursor: pointer;
+    min-width: 140px;
+  }
+  .filter-select:focus { border-color: var(--accent); }
+  .btn {
+    padding: 10px 18px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--text); font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: var(--surface-strong); border-color: var(--accent); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #a855f7);
+    border-color: transparent; color: white;
+  }
+  .btn-primary:hover { box-shadow: 0 0 20px var(--accent-glow); }
+  .btn-success { background: rgba(74,222,128,0.15); border-color: var(--success); color: var(--success); }
+  .btn-danger { background: rgba(248,113,113,0.15); border-color: var(--danger); color: var(--danger); }
+
+  .csv-import {
+    background: var(--surface);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 30px;
+    text-align: center;
+    margin-bottom: 24px;
+    transition: border-color 0.3s, background 0.3s;
+    cursor: pointer;
+  }
+  .csv-import.dragover { border-color: var(--accent); background: rgba(124,92,255,0.05); }
+  .csv-import h3 { margin-bottom: 8px; font-size: 1.1rem; }
+  .csv-import p { color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 16px; }
+
+  .table-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .table-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    background: var(--surface-raised);
+  }
+  .table-count { font-size: 0.85rem; color: var(--text-secondary); }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.82rem;
+  }
+  thead { background: var(--surface-raised); }
+  th {
+    padding: 10px 12px; text-align: left;
+    font-weight: 600; color: var(--text-secondary);
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+  td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(124,92,255,0.03); }
+  tr:last-child td { border-bottom: none; }
+  .col-id { width: 40px; text-align: center; }
+  .col-platform { width: 80px; }
+  .col-status { width: 100px; }
+  .col-price { width: 80px; text-align: right; }
+  .col-qty { width: 50px; text-align: center; }
+  .col-actions { width: 100px; text-align: center; }
+
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 100px; font-size: 0.7rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .status-delivered { background: rgba(74,222,128,0.12); color: var(--success); }
+  .status-pending { background: rgba(96,165,250,0.12); color: var(--info); }
+  .status-scheduled { background: rgba(251,191,36,0.12); color: var(--warning); }
+  .status-cancelled { background: rgba(248,113,113,0.12); color: var(--danger); }
+  .status-refunded { background: rgba(167,139,250,0.12); color: #a78bfa; }
+  .status-consolidated { background: rgba(45,212,191,0.12); color: #2dd4bf; }
+
+  .platform-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-weight: 700; font-size: 0.75rem;
+  }
+
+  .item-desc {
+    max-width: 280px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--text-secondary);
+  }
+  .tracking-num {
+    font-family: 'SF Mono', monospace;
+    font-size: 0.75rem; color: var(--text-muted);
+    background: var(--surface-strong);
+    padding: 2px 6px; border-radius: 4px;
+  }
+
+  .breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px; margin-bottom: 24px;
+  }
+  .breakdown-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+  }
+  .breakdown-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .breakdown-title { font-size: 0.8rem; font-weight: 600; color: var(--text-secondary); }
+  .breakdown-total { font-size: 0.75rem; color: var(--text-muted); }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .bar-label { width: 70px; font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; }
+  .bar-track { flex: 1; height: 6px; background: var(--surface-strong); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .bar-value { width: 30px; text-align: right; font-size: 0.75rem; font-weight: 700; }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center;
+    z-index: 1000; padding: 20px;
+  }
+  .modal-overlay.show { display: flex; }
+  .modal {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-width: 500px; width: 100%;
+    max-height: 80vh; overflow-y: auto;
+    padding: 24px;
+  }
+  .modal h2 { margin-bottom: 16px; font-size: 1.2rem; }
+  .modal-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .modal-row:last-child { border-bottom: none; }
+  .modal-label { color: var(--text-secondary); font-size: 0.85rem; }
+  .modal-value { font-weight: 600; font-size: 0.85rem; }
+  .modal-close {
+    float: right; background: none; border: none; color: var(--text-secondary);
+    font-size: 1.4rem; cursor: pointer; margin-top: -4px;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .toast-container {
+    position: fixed; bottom: 20px; right: 20px;
+    display: flex; flex-direction: column; gap: 8px; z-index: 2000;
+  }
+  .toast {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.85rem; font-weight: 600;
+    animation: toastIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  }
+  .toast.xp { border-color: var(--warning); }
+  .toast.levelup { border-color: var(--accent); background: linear-gradient(135deg, var(--surface-raised), rgba(124,92,255,0.1)); }
+  @keyframes toastIn {
+    from { transform: translateX(100px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes toastOut {
+    to { transform: translateX(100px); opacity: 0; }
+  }
+
+  .levelup-overlay {
+    position: fixed; inset: 0;
+    background: rgba(15,15,26,0.95);
+    display: none; align-items: center; justify-content: center;
+    z-index: 3000; flex-direction: column;
+  }
+  .levelup-overlay.show { display: flex; animation: fadeIn 0.5s; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .levelup-star { font-size: 4rem; animation: starPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  @keyframes starPop {
+    0% { transform: scale(0) rotate(-180deg); }
+    100% { transform: scale(1) rotate(0deg); }
+  }
+  .levelup-text { font-size: 2rem; font-weight: 800; margin: 16px 0 8px; }
+  .levelup-sub { color: var(--text-secondary); font-size: 1rem; }
+  .levelup-btn {
+    margin-top: 24px; padding: 12px 32px;
+    background: linear-gradient(135deg, var(--accent), var(--level));
+    border: none; border-radius: 100px; color: white; font-weight: 700;
+    font-size: 1rem; cursor: pointer; box-shadow: 0 0 30px var(--accent-glow);
+  }
+
+  @media (max-width: 768px) {
+    .level-card { flex-direction: column; text-align: center; }
+    .xp-gain { position: static; transform: none; margin-top: 10px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .controls { flex-direction: column; }
+    .search-box { width: 100%; }
+    table { font-size: 0.75rem; }
+    th, td { padding: 8px 6px; }
+    .item-desc { max-width: 120px; }
+  }
+
+  .empty-state {
+    text-align: center; padding: 60px 20px; color: var(--text-secondary);
+  }
+  .empty-state-icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface-strong); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <div class="logo">
+        <div class="logo-icon">📦</div>
+        <div>Parcel Quest</div>
+      </div>
+      <div class="subtitle">Turn parcel tracking into an adventure</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-primary" onclick="triggerImport()">📁 Import CSV</button>
+      <button class="btn" onclick="exportCSV()">💾 Export CSV</button>
+      <button class="btn btn-danger" onclick="clearAll()">🗑️ Clear</button>
+    </div>
+  </div>
+
+  <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleFileSelect(event)">
+
+  <div class="csv-import" id="dropZone">
+    <h3>📂 Drop your CSV here</h3>
+    <p>Or click the <strong>Import CSV</strong> button above. Expected: Platform, Tracking, Receiver, Category, Item Description, Qty, Price (RM), Pickup Code, NUJ Cost, Status, Remark, For</p>
+  </div>
+
+  <div class="level-card" id="levelCard">
+    <div class="level-badge" id="levelBadge">
+      <span id="levelNum">1</span>
+      <small>LVL</small>
+    </div>
+    <div class="level-info">
+      <div class="level-title" id="levelTitle">Parcel Novice</div>
+      <div class="level-subtitle" id="levelSubtitle">Track parcels to gain XP and level up!</div>
+      <div class="xp-bar-container">
+        <div class="xp-bar" id="xpBar" style="width:0%"></div>
+      </div>
+      <div class="xp-text">
+        <span id="xpCurrent">0 XP</span>
+        <span id="xpNext">100 XP to next level</span>
+      </div>
+    </div>
+    <div class="xp-gain">
+      <div class="big" id="totalXP">0</div>
+      <div class="small">Total XP</div>
+    </div>
+  </div>
+
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-card active" data-filter="all" onclick="setFilter('all')">
+      <div class="stat-icon">📦</div>
+      <div class="stat-value" id="statTotal">0</div>
+      <div class="stat-label">Total Parcels</div>
+    </div>
+    <div class="stat-card" data-filter="Delivered" onclick="setFilter('Delivered')">
+      <div class="stat-icon">✅</div>
+      <div class="stat-value" id="statDelivered">0</div>
+      <div class="stat-label">Delivered</div>
+    </div>
+    <div class="stat-card" data-filter="Pending" onclick="setFilter('Pending')">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-value" id="statPending">0</div>
+      <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card" data-filter="Scheduled" onclick="setFilter('Scheduled')">
+      <div class="stat-icon">📅</div>
+      <div class="stat-value" id="statScheduled">0</div>
+      <div class="stat-label">Scheduled</div>
+    </div>
+    <div class="stat-card" data-filter="Cancelled" onclick="setFilter('Cancelled')">
+      <div class="stat-icon">❌</div>
+      <div class="stat-value" id="statCancelled">0</div>
+      <div class="stat-label">Cancelled</div>
+    </div>
+    <div class="stat-card" data-filter="Refunded" onclick="setFilter('Refunded')">
+      <div class="stat-icon">💰</div>
+      <div class="stat-value" id="statRefunded">0</div>
+      <div class="stat-label">Refunded</div>
+    </div>
+  </div>
+
+  <div class="breakdown" id="breakdown">
+    <div class="breakdown-card">
+      <div class="breakdown-header">
+        <span class="breakdown-title">📱 By Platform</span>
+        <span class="breakdown-total" id="platformTotal">0 total</span>
+      </div>
+      <div id="platformBars"></div>
+    </div>
+    <div class="breakdown-card">
+      <div class="breakdown-header">
+        <span class="breakdown-title">🏷️ By Category</span>
+        <span class="breakdown-total" id="categoryTotal">0 total</span>
+      </div>
+      <div id="categoryBars"></div>
+    </div>
+    <div class="breakdown-card">
+      <div class="breakdown-header">
+        <span class="breakdown-title">👤 For Whom</span>
+        <span class="breakdown-total" id="forTotal">0 total</span>
+      </div>
+      <div id="forBars"></div>
+    </div>
+  </div>
+
+  <div class="achievements-section">
+    <div class="section-title">🏆 Achievements</div>
+    <div class="achievements-grid" id="achievements"></div>
+  </div>
+
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search tracking, item, receiver..." oninput="render()">
+    </div>
+    <select class="filter-select" id="platformFilter" onchange="render()">
+      <option value="">All Platforms</option>
+    </select>
+    <select class="filter-select" id="categoryFilter" onchange="render()">
+      <option value="">All Categories</option>
+    </select>
+    <select class="filter-select" id="forFilter" onchange="render()">
+      <option value="">All Receivers</option>
+    </select>
+    <button class="btn" onclick="addParcel()">➕ Add Parcel</button>
+  </div>
+
+  <div class="table-container">
+    <div class="table-header">
+      <span class="table-count" id="tableCount">0 parcels</span>
+      <div>
+        <button class="btn" style="padding:6px 12px;font-size:0.75rem;" onclick="prevPage()">◀</button>
+        <span id="pageInfo" style="font-size:0.8rem;margin:0 8px;">Page 1</span>
+        <button class="btn" style="padding:6px 12px;font-size:0.75rem;" onclick="nextPage()">▶</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-id">#</th>
+            <th class="col-platform">Platform</th>
+            <th>Tracking</th>
+            <th>Item</th>
+            <th class="col-qty">Qty</th>
+            <th class="col-price">Price</th>
+            <th class="col-status">Status</th>
+            <th>For</th>
+            <th class="col-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="parcelTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <h2>📦 Parcel Details</h2>
+    <div id="modalContent"></div>
+    <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;">
+      <button class="btn" onclick="closeModal()">Close</button>
+      <button class="btn btn-success" onclick="cycleStatus()">Cycle Status</button>
+      <button class="btn btn-danger" onclick="deleteCurrent()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<div class="levelup-overlay" id="levelupOverlay">
+  <div class="levelup-star">⭐</div>
+  <div class="levelup-text" id="levelupText">Level Up!</div>
+  <div class="levelup-sub" id="levelupSub">You reached Level 2</div>
+  <button class="levelup-btn" onclick="closeLevelup()">Awesome! 🎉</button>
+</div>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+// ===================== INITIAL DATA =====================
+const INITIAL_PARCELS = [{"id": 1, "tracking": "649149555250", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kkndo Slimming Pills 400pcs/box 3boxes RM150.82", "qty": 3, "price": 150.82, "pickupCode": "L-59569", "nujCost": 3.0, "status": "Delivered", "remark": "Lazada", "for": "Aisyah"}, {"id": 2, "tracking": "680024139401016", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 10packs RM399.95", "qty": 10, "price": 340.95, "pickupCode": "L-59569", "nujCost": 9.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 3, "tracking": "MY2605504943911", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "VSLIM BOOSTER BY DYNA YUSOFF 20pcs RM513.28", "qty": 20, "price": 513.28, "pickupCode": "L-59569", "nujCost": 7.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 4, "tracking": "680096985041116", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 5packs RM200.00", "qty": 5, "price": 170.0, "pickupCode": "L-59569", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 5, "tracking": "680085194611716", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Jelly Mantul Sedekah Follower 7 Sachet Ziplock 20pcs RM448.40", "qty": 20, "price": 381.14, "pickupCode": "L-59569", "nujCost": 5.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 6, "tracking": "680069667881913", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Latte Butterbean Frosted Double Boost 14pcs RM239.12", "qty": 14, "price": 190.12, "pickupCode": "L-59569", "nujCost": 5.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 7, "tracking": "680062194911710", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Jelly Mantul Sedekah Follower 7 Sachet Ziplock 20pcs RM437.64", "qty": 20, "price": 347.96, "pickupCode": "L-59569", "nujCost": 5.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 8, "tracking": "680065810712913", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 9packs RM350.91", "qty": 9, "price": 325.01, "pickupCode": "L-59569", "nujCost": 9.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 9, "tracking": "680067679751212", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 5packs RM200.00", "qty": 5, "price": 171.0, "pickupCode": "L-59569", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 10, "tracking": "680046578701013", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 5packs RM200.00", "qty": 5, "price": 171.0, "pickupCode": "L-59569", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 11, "tracking": "680088827332216", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Mantul V Spray by ITA Kosmetik 20pcs RM149.51", "qty": 20, "price": 121.71, "pickupCode": "L-59569", "nujCost": 7.0, "status": "Delivered", "remark": "TikTok", "for": "San"}, {"id": 12, "tracking": "680054184681912", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 8packs RM320.00", "qty": 8, "price": 275.0, "pickupCode": "L-59569", "nujCost": 12.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 13, "tracking": "680017183681912", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'Lims (25g x 15 sachet) 10packs RM390.43", "qty": 10, "price": 331.43, "pickupCode": "L-59569", "nujCost": 14.0, "status": "Delivered", "remark": "TikTok", "for": "San"}, {"id": 14, "tracking": "680000038272718", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Set Meryem 5 in 1 Best Seller 10pcs RM1,167.00", "qty": 10, "price": 953.8, "pickupCode": "L-59569", "nujCost": 14.0, "status": "Delivered", "remark": "TikTok", "for": "San"}, {"id": 15, "tracking": "680092296341210", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Toner Meryem Whitening Fade Spots 20pcs RM360.00", "qty": 20, "price": 289.0, "pickupCode": "L-59569", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 16, "tracking": "MY260988669442N", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow Matcha Salicylic Acid Acne Cleanser 6pcs RM93.52", "qty": 6, "price": 93.52, "pickupCode": "S-59233", "nujCost": 4.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 17, "tracking": "MY260516622934E", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "MeeGoo Smart Weight Scale 1pc RM50.00", "qty": 2, "price": 40.0, "pickupCode": "S-60569", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 18, "tracking": "649149140140", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "G2G lip balm 4pcs RM264.00", "qty": 4, "price": 210.98, "pickupCode": "L-59260", "nujCost": 7.0, "status": "Delivered", "remark": "Lazada", "for": "Aisyah"}, {"id": 19, "tracking": "649149137334", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "G2G lip gloss 7pcs RM262.00", "qty": 7, "price": 199.65, "pickupCode": "L-59260", "nujCost": 7.0, "status": "Delivered", "remark": "Lazada", "for": "Aisyah"}, {"id": 20, "tracking": "MY2658815954777", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "KRIM BADUPE LEKANG 20g/pc 5pcs RM30.00, Withyoo Cream 20g/pc 6pcs RM24.50", "qty": 11, "price": 53.62, "pickupCode": "S-59233", "nujCost": 4.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 21, "tracking": "MY263045634705Q", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Bai Fu Ling Yellow Cream 1box/20pcs RM59.62", "qty": 20, "price": 62.8, "pickupCode": "S-59601", "nujCost": 4.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 22, "tracking": "MY264753357391S", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow 40grm Sunscreen 5pcs RM45.00", "qty": 5, "price": 47.12, "pickupCode": "S-59601", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 23, "tracking": "MY2683269272162", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "AVON Feelin Fresh QUELCH Whitening B1T1 SPRING BLOSSOM 3pcs RM90.75", "qty": 3, "price": 76.23, "pickupCode": "", "nujCost": 0.0, "status": "Refunded", "remark": "Shopee", "for": "Aisyah"}, {"id": 24, "tracking": "MY262924754678A", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "CRAN LITE EFF Powder 5G X 30'S RM84.00", "qty": 1, "price": 78.0, "pickupCode": "S-59601", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 25, "tracking": "649150255175", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Others", "item": "Furvit Cat Candy's NUTRI LICK Cat Stick Booster Supplement Salmon 2boxes RM59.00", "qty": 2, "price": 112.03, "pickupCode": "S-59601", "nujCost": 5.0, "status": "Delivered", "remark": "Lazada", "for": "San"}, {"id": 26, "tracking": "MY264456798777O", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "ANKER Zolo USB C Charger Block Black 1pc RM77.00, UGREEN Nexode GaN 30W 2C1A Pink 1pc RM34.90", "qty": 2, "price": 87.37, "pickupCode": "S-59885", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 27, "tracking": "MY2673481246764", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "MeeGoo Smart GPS Tracker Mini Keys Black 2pcs RM40.34", "qty": 2, "price": 38.42, "pickupCode": "S-59885", "nujCost": 2.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 28, "tracking": "649151001073", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "UGREEN 20W 20000mAh Powerbank PD Fast Charging USB-C USB Black (CCC) 1pc RM272.50", "qty": 1, "price": 87.06, "pickupCode": "", "nujCost": 0.0, "status": "Cancelled", "remark": "Lazada", "for": "Aisyah"}, {"id": 29, "tracking": "649150678144", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "KORMESIC Minoxidil Shampoo Conditioner Serum Massage Cream Anti Hair Loss Leave In Foam 5pcs RM29.50", "qty": 5, "price": 45.63, "pickupCode": "S-59885", "nujCost": 3.0, "status": "Delivered", "remark": "Lazada", "for": "San"}, {"id": 30, "tracking": "649151148444", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "ORI NGS Brand 5160mAh BN57 Battery Compatible For Xiaomi Poco X3 NFC / Poco X3 Pro 1pc RM65.00", "qty": 1, "price": 52.07, "pickupCode": "S-59885", "nujCost": 3.0, "status": "Delivered", "remark": "Lazada", "for": "San"}, {"id": 31, "tracking": "649150710208", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Others", "item": "SPRINGO 4in1 Queen/King/2in1 Single Fitted Bedsheet Set 2pcs", "qty": 2, "price": 57.96, "pickupCode": "S-59885", "nujCost": 4.0, "status": "Delivered", "remark": "Lazada", "for": "San"}, {"id": 32, "tracking": "SPXMY069928741046", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "For Xiaomi Mi Poco X3 NFC Pro Original X3 NFC Ultrawide Camera Module 1pc RM34.40", "qty": 1, "price": 34.4, "pickupCode": "S-60569", "nujCost": 2.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 33, "tracking": "680023500572815", "platform": "TikTok", "receiver": "NUR AISYAH ARISSA GOH", "category": "Beauty Care", "item": "SEDEKAH SAMPLE MERYEM LIPOBOND (5 SACHET) 20pcs RM391.98", "qty": 20, "price": 320.88, "pickupCode": "L-59260", "nujCost": 6.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 34, "tracking": "680029502272818", "platform": "TikTok", "receiver": "NUR AISYAH ARISSA GOH", "category": "Beauty Care", "item": "JELLY MANTUL SEDEKAH FOLLOWER 7 SACHET ZIPLOCK 20pcs RM388.37", "qty": 20, "price": 316.73, "pickupCode": "L-59260", "nujCost": 6.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 35, "tracking": "680038509832813", "platform": "TikTok", "receiver": "NUR AISYAH ARISSA GOH", "category": "Beauty Care", "item": "KRIM JERAGAT MERYEM HYPERPIGMENTATION CREAM 10pcs RM150.00", "qty": 10, "price": 127.5, "pickupCode": "L-59260", "nujCost": 4.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 36, "tracking": "MY269527539295U", "platform": "Shopee", "receiver": "NUR AISYAH ARISSA GOH", "category": "Fashion Acc", "item": "MOSSDOOM Danica Bag Women's Bag 12pcs RM453.91", "qty": 12, "price": 453.91, "pickupCode": "L-59260", "nujCost": 8.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 37, "tracking": "MY261450758883S", "platform": "Shopee", "receiver": "NUR AISYAH ARISSA GOH", "category": "Beauty Care", "item": "[2PCS] GMEELAN Black Truffle High Coverage Flawless Matte 02 Natural 5pcs RM150.00, 01 Ivory 5pcs RM150.00", "qty": 10, "price": 285.3, "pickupCode": "L-59956", "nujCost": 4.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 38, "tracking": "649150634593", "platform": "Lazada", "receiver": "NUR AISYAH ARISSA GOH", "category": "Fashion Acc", "item": "naelofar nWear Ayna Handsocks Glossy Grape L 3pcs RM120.30, Blue Mist L 3pcs RM120.30", "qty": 6, "price": 216.58, "pickupCode": "L-59956", "nujCost": 2.0, "status": "Delivered", "remark": "Lazada", "for": "Aisyah"}, {"id": 39, "tracking": "680083181051513", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'lims (25g x 15 sachet) 10packs RM297.46", "qty": 10, "price": 297.46, "pickupCode": "L-59956", "nujCost": 9.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 40, "tracking": "680028671381318", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Kopi Che'lims (25g x 15 sachet) 10packs RM399.95 + 9packs RM200.00 + 5packs RM200.00", "qty": 24, "price": 799.95, "pickupCode": "L-59956", "nujCost": 26.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 41, "tracking": "649153432663", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow White Truffle Radiance Glow Serum Spray 100ml set 4pcs RM159 x2, set 2pcs RM99 x1, Glowy Tint Lip Balm set 4pcs RM129 x3", "qty": 22, "price": 363.76, "pickupCode": "L-60324", "nujCost": 10.0, "status": "Delivered", "remark": "Lazada", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 42, "tracking": "649151001073", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "UGREEN 10,000 mAh Power Bank (Blazeking) â_x0080__x0094_ CANCELLED, replaced by #43", "qty": 1, "price": 0.0, "pickupCode": "", "nujCost": 0.0, "status": "Cancelled", "remark": "Lazada", "for": "Aisyah"}, {"id": 43, "tracking": "649158220478", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "UGREEN 20,000 mAh Power Bank Two-way Fast Charging PD QC 3.0 22.5W 1pc RM272.50 â_x0080__x0094_ Replacement for cancelled Blazeking 10K mAh", "qty": 1, "price": 82.08, "pickupCode": "L-60566", "nujCost": 3.0, "status": "Delivered", "remark": "Lazada", "for": "San"}, {"id": 44, "tracking": "680006396671115", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE'LIMS (25g x 15 Sachet) â_x0080__x0094_ 5 sets RM200.00", "qty": 5, "price": 170.0, "pickupCode": "L-59956", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 45, "tracking": "MY261192241781I", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow Niacinamide Serum Facial Wash Cleanser 70g x 6pcs RM67.00", "qty": 6, "price": 58.45, "pickupCode": "S-60369", "nujCost": 5.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 46, "tracking": "MY2603594037223", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow Deep Pore Clean Facial Wash Volcano Cleanser 3pcs x 2 sets RM74.00", "qty": 6, "price": 64.55, "pickupCode": "S-60569", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 47, "tracking": "MY261769206098H", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "GMEELAN Makeup Serum 2pcs x 5 sets RM32.00 each + GMEELAN Glabridin Tinted Lip Kit (02 Berry Glaze & 01 Cocoa Kiss) 2pcs x 5 sets RM26.00 each", "qty": 30, "price": 399.98, "pickupCode": "L-61467", "nujCost": 8.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 48, "tracking": "680072698451115", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "SET MERYEM (7 sachet SPANISH LATTE + 1 botol MERYEM PRO) â_x0080__x0094_ 5 sets RM500.00", "qty": 5, "price": 400.0, "pickupCode": "L-59956", "nujCost": 5.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 49, "tracking": "680078406622412", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow Daily Hydration Tinted Balm Set 2pcs (Lip Serum Pearl Sparkle + 3-IN-1 Glowy Tint Lip Balm) â_x0080__x0094_ 12 sets (24pcs) RM549.20", "qty": 24, "price": 436.4, "pickupCode": "L-59956", "nujCost": 7.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 50, "tracking": "680089557122817", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "COMBO BORONG LIPOBOND DAN LATTE 5 ITEM *10  RM1,000.00", "qty": 50, "price": 851.0, "pickupCode": "L-60324", "nujCost": 11.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 51, "tracking": "680097685771311", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "PUTEH EDITION LUXE 1KG â_x0080__x0094_ Minuman Serbuk Babies Blinks Datin Lyanaz Hassan (Edisi Terhad) 10pcs RM642.43", "qty": 10, "price": 499.95, "pickupCode": "L-60324", "nujCost": 16.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 52, "tracking": "680049785151312", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "JELLY MANTUL SEDEKAH FOLLOWER 7 SACHET ZIPLOCK 20pcs RM499.87", "qty": 20, "price": 399.87, "pickupCode": "L-59956", "nujCost": 5.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 53, "tracking": "680047786321315", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "JELLY MANTUL SEDEKAH FOLLOWER 7 SACHET ZIPLOCK 20pcs RM500.00", "qty": 20, "price": 400.0, "pickupCode": "L-59956", "nujCost": 4.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 54, "tracking": "648022810672", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Totaria USP Methylene Blue Brain Supplement 13-in-1 1pc RM149.90 + Totaria Magnesium Glycinate with Glycine & Taurine 9-in-1 1pc RM109.90", "qty": 2, "price": 85.26, "pickupCode": "S-60775", "nujCost": 3.0, "status": "Pending", "remark": "Lazada", "for": "San"}, {"id": 55, "tracking": "MY2635799405437", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow PDRN 10% Double PDRN Set (Regenerate & Glow Combo) x5 RM34.99 each", "qty": 5, "price": 120.36, "pickupCode": "L-60566", "nujCost": 5.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 56, "tracking": "680070680871314", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "PUTEH EDITION LUXE 1KG â_x0080__x0094_ Minuman Serbuk Babies Blinks Datin Lyanaz Hassan (Edisi Terhad) 15pcs RM950.69", "qty": 15, "price": 743.47, "pickupCode": "L-60324", "nujCost": 26.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 57, "tracking": "680074806192315", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Fashion Acc", "item": "LC Bold Unisex Bag (Super Premium Nylon) No Box â_x0080__x0094_ 3 variants x 2pcs each RM332.30", "qty": 6, "price": 332.3, "pickupCode": "L-60324", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 58, "tracking": "680024791921414", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "PUTEH EDITION LUXE 1KG â_x0080__x0094_ Minuman Serbuk Babies Blinks Datin Lyanaz Hassan (Edisi Terhad) 10pcs RM649.90", "qty": 10, "price": 507.42, "pickupCode": "L-60324", "nujCost": 16.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 59, "tracking": "680049704912317", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Meryem Body Super Serumm. 20pcs RM497.85", "qty": 20, "price": 407.85, "pickupCode": "L-60324", "nujCost": 10.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 60, "tracking": "680066507562112", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Essence Toner Meryem Skincare 12pcs RM190.80", "qty": 12, "price": 157.64, "pickupCode": "L-60324", "nujCost": 7.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 61, "tracking": "680021403982810", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Kitchen", "item": "Set Memasak 3 Beradik Papalaris Anti Lekat Berkualiti Tinggi 16cm, 24cm & 24cm (Percuma 1 Pengepit) 3 sets RM254.19", "qty": 3, "price": 208.29, "pickupCode": "L-60324", "nujCost": 15.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 62, "tracking": "680081402862011", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Fashion Acc", "item": "Hadiah Hari Guru Premium Leather Keychain Cantik Teacher's Day Gift Cikgu Supplies Gold â_x0080__x0094_ 5 variants x 3pcs each RM175.91", "qty": 15, "price": 141.89, "pickupCode": "L-60324", "nujCost": 2.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 63, "tracking": "MY2692585743T", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Baiyaolang Herbal Cream 20g/pc â_x0080__x0094_ Buy 5 Free 5 x 2 sets RM35.99 each", "qty": 20, "price": 72.16, "pickupCode": "S-60775", "nujCost": 5.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"id": 64, "tracking": "MY261153094470J", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Skintific 5X Ceramide Barrier Repair GlowingMoist 30g x2 RM84.00 + Ceramide Moist 30g x2 RM84.00 + Moisturizer MSH-Brightening 30g x1 RM43.00 + Moisturizer 5X Repairing 30g x1 RM43.00", "qty": 10, "price": 317.79, "pickupCode": "L-60566", "nujCost": 7.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 65, "tracking": "MY265341982806F", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow Deep Pore Clean Facial Wash Volcano Cleanser 3PC x5 RM37.00 each", "qty": 15, "price": 168.16, "pickupCode": "L-60566", "nujCost": 7.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 66, "tracking": "LAZCA1003787484", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "Lenovo Precision Weight Scale USB Charging Sakura White 1pc RM40.68", "qty": 1, "price": 27.4, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Lazada", "for": "San"}, {"id": 67, "tracking": "680022813712913", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE'LIMS (25g x 15 Sachet) Kopi Campuran Ekstrak Gingko Biloba dan Serbuk Likopena 9 packs RM356.97", "qty": 9, "price": 302.97, "pickupCode": "L-60566", "nujCost": 8.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 68, "tracking": "680062512272415", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE'LIMS (25g x 15 Sachet) Kopi Campuran Ekstrak Gingko Biloba dan Serbuk Likopena 11 packs RM438.82", "qty": 11, "price": 360.62, "pickupCode": "L-60566", "nujCost": 16.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 69, "tracking": "680046210392710", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "DHERBS Minuman Lemon S Tea (Beli Combo 4 Percuma 1 Lotion Bidara) 5pcs RM365.51", "qty": 5, "price": 291.61, "pickupCode": "L-60566", "nujCost": 11.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 70, "tracking": "680055618472013", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE'LIMS (25g x 15 Sachet) Kopi Campuran Ekstrak Gingko Biloba dan Serbuk Likopena 11 packs RM429.44", "qty": 11, "price": 351.24, "pickupCode": "L-60566", "nujCost": 23.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 71, "tracking": "680073310732912", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "DHERBS Minuman Lemon S Tea (Beli Combo 4 Percuma 1 Lotion Bidara) 5pcs RM365.51", "qty": 5, "price": 297.56, "pickupCode": "L-60566", "nujCost": 9.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 72, "tracking": "680033916912513", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE'LIMS (25g x 15 Sachet) Kopi Campuran Ekstrak Gingko Biloba dan Serbuk Likopena 19 packs RM360", "qty": 9, "price": 306.0, "pickupCode": "L-60566", "nujCost": 13.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"id": 73, "tracking": "680043215492712", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "DHERBS Minuman Lemon S Tea (Beli Combo 4 Percuma 1 Lotion Bidara) 5pcs RM365.29", "qty": 5, "price": 298.88, "pickupCode": "L-60566", "nujCost": 11.0, "status": "Delivered", "remark": "TikTok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 74, "tracking": "MY263800873954M", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Skintific PDRN Bright Serum 2pcs/set @ RM74/99  8", "qty": 16, "price": 497.12, "pickupCode": "", "nujCost": 0.0, "status": "Consolidated", "remark": "Shopee", "for": "Aisyah"}, {"id": 75, "tracking": "MY262771380049G", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Skintific Perfecting Cushion 2NC ivory @RM58.90 *3, 1NC vanilla @RM51 *3, 3NC petal @ RM50.99 * 4", "qty": 10, "price": 352.09, "pickupCode": "L-61079", "nujCost": 12.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 76, "tracking": "MY2608312422151", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Elec. Appl.", "item": "MeeGoo Smart Tracker Anti Lost RM18 *2", "qty": 2, "price": 30.97, "pickupCode": "S-60775", "nujCost": 2.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 77, "tracking": "680008470582618", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Garment", "item": "Telekung Mawar 1pc RM285.37", "qty": 1, "price": 105.08, "pickupCode": "L-60910", "nujCost": 3.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 78, "tracking": "680019775622613", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "MERYEM INVISIBLE PORE PRIMER 20pc RM198.00MERYEM INVISIBLE PORE PRIMER 20pc RM198.00", "qty": 20, "price": 162.4, "pickupCode": "L-60910", "nujCost": 6.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 79, "tracking": "680031321692917", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Fashion Acc", "item": "AS NEW SOPHEA TOTE BAG VEGAN LEATHER 10PCS RM499", "qty": 10, "price": 440.2, "pickupCode": "L-60910", "nujCost": 15.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 80, "tracking": "680091872312512", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "WHITENING FADE SPOTS TONER PAD MERYEM 20PCS RM1,200.00", "qty": 20, "price": 984.0, "pickupCode": "L-60910", "nujCost": 13.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 81, "tracking": "680035477762716", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Garment", "item": "Telekung Mawar 1pc RM266.39", "qty": 1, "price": 109.98, "pickupCode": "L-60910", "nujCost": 3.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 82, "tracking": "MY268399031975E", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Home", "item": "MUYU Premium Cotton K-block, King+2 Pillowcase RM24.90 * 1pcs; Mattress topper Brown 10cm King RM74.15 * 1pcs", "qty": 2, "price": 95.5, "pickupCode": "S-60775", "nujCost": 8.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 83, "tracking": "680056870702518", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "BASIC SKINCARE NEW CLEANSER MERYEM + MOIS MERYEM + SS MERYEM NR 10pc RM450.00", "qty": 10, "price": 382.5, "pickupCode": "L-61079", "nujCost": 12.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 84, "tracking": "680056879502514", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "COMBO MERYEM MULTI REPAIR NIGHT CREAM & MERYEM MOISTURIZER 10pc RM350.00", "qty": 10, "price": 297.5, "pickupCode": "L-61079", "nujCost": 11.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 85, "tracking": "MY266626012787O", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Health Care", "item": "Original Dr Ann Cran-Max Cranberry Buy 1 Free 1 RM74.00 * 1pcs", "qty": 2, "price": 64.6, "pickupCode": "S-61203", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 86, "tracking": "MY2668963539757", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "SKINTIFIC 3X Acid Anti-Acne Gel Moisturizer 2pcs set RM252.00 * 3", "qty": 6, "price": 202.02, "pickupCode": "L-61079", "nujCost": 7.0, "status": "Delivered", "remark": "Shopee", "for": "Aisyah"}, {"id": 87, "tracking": "649159720739", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Glad2Glow 7% Glycolic Acid Toner 3-in-1 2pcs set RM395.00 * 5", "qty": 10, "price": 116.17, "pickupCode": "L-61079", "nujCost": 5.0, "status": "Delivered", "remark": "Lazada", "for": "Aisyah"}, {"id": 88, "tracking": "MY263850906666X", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Others", "item": "Nanovet Bio Spot-On Flea & Tick Treatment RM73.24 2 boxes", "qty": 2, "price": 71.42, "pickupCode": "S-61203", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 89, "tracking": "649157691872", "platform": "Lazada", "receiver": "GOH PAU SAN", "category": "Others", "item": "Drontal Plus BAYER Dewormer Tablets for Dogs & Cats Buy 3 Free 1 RM26.00 * 1 set (4 tablets)Drontal Plus BAYER Dewormer Tablets for Dogs & Cats Buy 3 Free 1 RM26.00 * 1 set (4 tablets)", "qty": 4, "price": 23.47, "pickupCode": "S-61352", "nujCost": 3.0, "status": "Delivered", "remark": "Lazada", "for": "San"}, {"id": 90, "tracking": "680066927212416", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "GMEELAN Glabridin Plumping Color-Adaptive Lip Essence 10pcs RM173.00", "qty": 10, "price": 137.0, "pickupCode": "L-61079", "nujCost": 5.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 91, "tracking": "MY261573950851G", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "Seapuri Scalpy Hair Growth Serum 30ml 1pc RM50.99", "qty": 1, "price": 36.29, "pickupCode": "S-61352", "nujCost": 3.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"id": 92, "tracking": "MY263255768123O", "platform": "Shopee", "receiver": "GOH PAU SAN", "category": "Beauty Care", "item": "IKIGA Turmeric Essence Face Cream 3pcs set RM17.29 × 2", "qty": 6, "price": 36.7, "pickupCode": "S-61203", "nujCost": 3.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"id": 93, "tracking": "680036232432213", "platform": "TikTok", "receiver": "GOH PAU SAN", "category": "Fashion Acc", "item": "Kstyle Kai's Glossy Leather Bag Black x2 + Pink x2 + Mocha x2 RM290.18", "qty": 6, "price": 251.68, "pickupCode": "L-61467", "nujCost": 12.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 94, "tracking": "680099598512312", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "SET JERAGAT SEMPENA 4.4 x3 RM360.00", "qty": 6, "price": 288.0, "pickupCode": "L-61467", "nujCost": 6.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 95, "tracking": "680019854432317", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "KEYCHAIN KARTUN GIRL COMEL acrylic custom x22 RM117.00", "qty": 22, "price": 124.0, "pickupCode": "L-61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 96, "tracking": "680069438262615", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "PUTEH COCONUT SHAKE by Babies Blinks Datin Lyanaz 4pcs RM355.00", "qty": 4, "price": 285.21, "pickupCode": "L-61467", "nujCost": 9.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 97, "tracking": "680074206453114", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Others", "item": "MA BUKU SOLAT BESTSELLER 13 RUKUN BESERTA BACAAN, TADABBUR DAN TATACARA SOLAT x10 RM129.81", "qty": 10, "price": 118.62, "pickupCode": "L-61467", "nujCost": 6.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 98, "tracking": "680095600353114", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "[5PCS] Teashell Niacinamide Brightening Soap 5 sets RM199.14", "qty": 25, "price": 154.04, "pickupCode": "L-61632", "nujCost": 8.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 99, "tracking": "680037722432810", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Dherbs Syampu Pewarna Rambut RM36.03 Combo Set x 5", "qty": 10, "price": 143.19, "pickupCode": "L-61632", "nujCost": 9.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 100, "tracking": "680025147482013", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo mix PHT and CHT free elite booster RM57.56 x 6", "qty": 12, "price": 278.57, "pickupCode": "L-61632", "nujCost": 21.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 101, "tracking": "680076872412518", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo MERYEM Multi Repair Night Cream & MERYEM Moisturizer AV Boost * 10 RM348.90", "qty": 10, "price": 296.4, "pickupCode": "L-61079", "nujCost": 12.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 102, "tracking": "649160190877", "platform": "Lazada", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Teashell Niacinamide Face Serum 2 bottles RM39.76* 2, 3 bottles RM51.70 * 2", "qty": 10, "price": 74.98, "pickupCode": "L-61467", "nujCost": 4.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 103, "tracking": "680078430642218", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Skintific PDRN Serum Spray [2PCS] set x5 RM75.15 each; subtotal RM375.75", "qty": 10, "price": 299.75, "pickupCode": "L-61079", "nujCost": 5.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 104, "tracking": "680012431642218", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Skintific PDRN Serum Spray [2PCS] set x5 RM75.29 each; subtotal RM376.49", "qty": 10, "price": 300.49, "pickupCode": "L-61079", "nujCost": 7.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 105, "tracking": "680071839202017", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Printed", "item": "KOMEO MEGA KOLEKSI USTAZ ADNIN 1 SET = 13 BOOKS RM429.00", "qty": 13, "price": 346.38, "pickupCode": "L-61079", "nujCost": 10.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 106, "tracking": "680018490042312", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "SET MANTUL MEMPESONA [DAMAN MAKIN SAYANG] 10PCS X6 RM359.40", "qty": 60, "price": 287.52, "pickupCode": "L-61079", "nujCost": 9.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 107, "tracking": "SPXMY061836825816", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Pttang Hair Growth Serum Concentrate x5 RM31.24 RM18.44", "qty": 5, "price": 59.55, "pickupCode": "S-61352", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 108, "tracking": "MY264753041737T", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Others", "item": "MAMA Oriental Kitchen Matcha Curry x4 pack x1 RM13.90", "qty": 4, "price": 19.2, "pickupCode": "S-61352", "nujCost": 4.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 109, "tracking": "MY269497086144V", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Be Bodywise Rosemary Hair Growth Serum Roll-On 25ml 2pcs RM45.90", "qty": 2, "price": 42.02, "pickupCode": "S-61653", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 110, "tracking": "MY263949152763F", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Elec. Appl.", "item": "Battery for Redmi Note 13 Pro Plus 1pc RM59.90; Battery BN5Q for Redmi 15C / POCO 1pc RM36.00", "qty": 2, "price": 81.99, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"id": 111, "tracking": "MY267873982009D", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Others", "item": "Drontal Cat 1 Tablet / Obat Cacing CAT 8pcs RM12.80", "qty": 8, "price": 17.1, "pickupCode": "S-61653", "nujCost": 3.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 112, "tracking": "SPXMY063641177546", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Seapuri Official – Scalpy Hair Growth Serum “Scalpy Serum x2” bundle, 2pcs", "qty": 2, "price": 107.6, "pickupCode": "S-61968", "nujCost": 0.0, "status": "Scheduled", "remark": "Shopee", "for": "San"}, {"id": 113, "tracking": "MY262264445297W", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Turmeric Lemon Kojic Acid Soap buy 3 free 2 x3 sets RM21.60", "qty": 15, "price": 76.58, "pickupCode": "S-61653", "nujCost": 4.0, "status": "Delivered", "remark": "Shopee", "for": "San"}, {"id": 114, "tracking": "680098368852410", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "(NO BOX) SET JERAGAT DAN GLOWING SEAWAL 1 MINGGU BY MADAME MARIVYAH ×10 RM158.44", "qty": 20, "price": 134.94, "pickupCode": "L-61632", "nujCost": 5.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 115, "tracking": "680063072562614", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE'LIMS (25g × 15 sachet) – kopi campuran ekstrak gingko biloba dan serbuk likopena ×10 RM490", "qty": 10, "price": 408.8, "pickupCode": "L-61632", "nujCost": 10.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 116, "tracking": "680072210343313", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "LATTE BUTTERBEAN FROSTED DOUBLE BOOST SAMPLE 20PCS RM380.80", "qty": 20, "price": 303.0, "pickupCode": "L-61632", "nujCost": 6.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 117, "tracking": "680028476162910", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "MOSSDOOM ZENITH BAG 5PCS + MOSSDOOM PAULA BAG 2PCS RM799.39", "qty": 7, "price": 481.19, "pickupCode": "L-61632", "nujCost": 11.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 118, "tracking": "680071911213915", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "MOSSDOOM Sores Wallet long wallet for women – 7pcs mixed colors RM298.47", "qty": 7, "price": 298.47, "pickupCode": "L-61632", "nujCost": 6.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 119, "tracking": "680044575162111", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "BOSTANTEN Paseo Beg Wanita Dumpling Design Kapasiti Besar Handbag/Underarm Bag PU Fabric – 3 colours × 2pcs each (total 6 bags) RM237.35", "qty": 6, "price": 200.09, "pickupCode": "L-61632", "nujCost": 7.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 120, "tracking": "680032027083015", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "[Live Exclusive] Teashell 5% Serum Niacinamide + Sabun Pencerah + Ampul Pencerah – Set Pencerahan Kulit 15 sets RM388.50", "qty": 30, "price": 285.68, "pickupCode": "L-61632", "nujCost": 9.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 121, "tracking": "680092118103615", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "LATTE BUTTERBEAN FROSTED DOUBLE BOOST SAMPLE 20pcs RM380.91", "qty": 20, "price": 303.15, "pickupCode": "L-61632", "nujCost": 6.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 122, "tracking": "680072079562618", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Garment", "item": "TURKISH SILLA COTTON VOILE shawls 13pcs RM207.87 , 12pcs RM191.88", "qty": 25, "price": 399.75, "pickupCode": "L-61632", "nujCost": 4.0, "status": "Delivered", "remark": "Tiktok", "for": "Aisyah"}, {"id": 123, "tracking": "MY2610713731794", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "EELHOE Ginseng Serum Soap Set A 100ml+100g RM8.07 ×5; free EELHOE 7Days Ginger Nail Fungus Care Essence 50ml RM40.35", "qty": 11, "price": 49.95, "pickupCode": "S-61968", "nujCost": 0.0, "status": "Scheduled", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 124, "tracking": "MY265717779691V", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "QINLING Astragalus Cream Anti Wrinkle QL-Astra Cream 70g RM3.45 ×5", "qty": 5, "price": 22.55, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"id": 125, "tracking": "680047916663611", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Teashell 5% Serum Niacinamide + Sabun Pencerah + Ampul Pencerah – 6 sets RM385.99", "qty": 18, "price": 247.31, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 126, "tracking": "680065913023710", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Teashell 5% Serum Niacinamide + Sabun Pencerah + Ampul Pencerah – 15 sets RM388.50", "qty": 45, "price": 285.66, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 127, "tracking": "680017028473018", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Teashell 5% Serum Niacinamide + Sabun Pencerah + Ampul Pencerah – 15 sets RM388.50", "qty": 45, "price": 247.82, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 128, "tracking": "680058425213313", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Teashell Brightening Set – Serum 5% Niacinamide + Sabun Pencerah RM25.89 ×5; free Teashell Serum Pemutih 5% Niacinamide & Alpha Arbutin 30ml RM129.45", "qty": 11, "price": 77.65, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 129, "tracking": "MY260761032293Q", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Skintific bundle – Matte Setting Spray 80ml RM77.00 ×2 + RM39.00 ×1; SPF50 Sunscreen Brighten 30g RM44.00 ×3; MSH Niacinamide 10% 4-Step 3-Serum RM39.00 ×5", "qty": 14, "price": 362.53, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 130, "tracking": "SPXMY060574946677", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Skintific SPF50 Sunscreen Matte 30g RM42.13 ×6 sets", "qty": 12, "price": 168.8, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "Aisyah"}, {"id": 131, "tracking": "MY261317267371X", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "DHERBS Delima Lips Butter Combo Delima RM40.00 ×10", "qty": 10, "price": 284.18, "pickupCode": "L-61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Shopee", "for": "Aisyah"}, {"id": 132, "tracking": "MY264522628156TSPXLM10152651", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "MERYEM Concealer Full Cover RM15.00 ×15", "qty": 15, "price": 216.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Shopee", "for": "Aisyah"}, {"id": 133, "tracking": "680042429093415", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "MERYEM MAKEUP EYESHADOW PALETTE 6 pcs RM146.10", "qty": 6, "price": 112.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 134, "tracking": "680022885912816", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "SET BORONG 10 PACK MERYEM booster/LIPOBOND Apple 20 pcs RM439.88", "qty": 20, "price": 327.38, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 135, "tracking": "680089470712618", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS 25g ×15 Sachet Kopi Campuran Ekstrak Gingko Biloba dan Serbuk Likopena RM102.60 ×9 RM923.64", "qty": 19, "price": 770.06, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 136, "tracking": "MY262297772519W", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Meryem Deep Cleansing Oil  RM15.00 ×10", "qty": 10, "price": 123.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Shopee", "for": "Aisyah"}, {"id": 137, "tracking": "680037972802816", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×20, RM980.00", "qty": 20, "price": 819.59, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 138, "tracking": "680056470022413", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×10, RM488.07; SET JERAGAT DAN GLOWING SEAWAL 1 MINGGU BY MADAME MARIYAH ×10, RM192.57; total RM680.64", "qty": 20, "price": 591.14, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 139, "tracking": "680095577022214", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×20, RM980.00", "qty": 20, "price": 849.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 140, "tracking": "680037975212816", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×6, RM294.00", "qty": 6, "price": 249.9, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 141, "tracking": "680020770762812", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "MERYEM B UP CREAM BY ITA KOSMETIK ×20, RM186.40", "qty": 20, "price": 156.4, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 142, "tracking": "680046374232811", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena, combined RM972.32", "qty": 20, "price": 824.62, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 143, "tracking": "680054471122414", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×12, RM539.00; (PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×11, RM588.00", "qty": 23, "price": 945.78, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 144, "tracking": "680006973682116", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×20, RM980.00", "qty": 20, "price": 818.6, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 145, "tracking": "680051972012815", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 1 POUCH KOPI CHE’LIMS (25g × 15 Sachet) Kopi campuran ekstrak Gingko Biloba dan serbuk Likopena ×20, RM980.00", "qty": 20, "price": 848.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 146, "tracking": "680078670522018", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "SET BORONG 10 PACK MERYEM booster (LIPOBOND APPLE) ×10, RM1,150.00", "qty": 10, "price": 935.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 147, "tracking": "680057671332115", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "[Clearance Sale] MOSSDOOM Lunar Bag women’s waterproof shoulder bag with adjustable strap and large capacity ×6, RM720.00", "qty": 6, "price": 346.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 148, "tracking": "680097573712011", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "DHERBS MINUMAN LEMON S TEA BY ALIFF SYUKRI TERLAJAK LARIS ×10, RM348.30", "qty": 10, "price": 300.8, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 149, "tracking": "680029382112114", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "COMBO PUTIH SUCI (1 sabun + 1 krim per set) ×20 sets = 40 pcs, RM309.97", "qty": 40, "price": 309.97, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 150, "tracking": "680030189562710", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "SET SKINCARE MERYEM 5 in 1 (TRIAL SET) ×10 sets, RM467.50", "qty": 10, "price": 446.5, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 151, "tracking": "680068030063011", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "LATTE BUTTERBEAN FROSTED DOUBLE BOOST SAMPLE ×20, RM388.60", "qty": 20, "price": 311.03, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 152, "tracking": "680074479022415", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 6 POUCHES KOPI CHE'LIMS (25g × 15 sachet) – kopi campuran ekstrak gingko biloba dan serbuk likopena RM291.77", "qty": 6, "price": 247.67, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 153, "tracking": "680049979582114", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 20 POUCHES KOPI CHE'LIMS (25g × 15 sachet) – kopi campuran ekstrak gingko biloba dan serbuk likopena RM967.74", "qty": 20, "price": 836.74, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 154, "tracking": "680025979682111", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) 10 POUCHES KOPI CHE'LIMS (25g × 15 sachet) – kopi campuran ekstrak gingko biloba dan serbuk likopena RM539.00", "qty": 10, "price": 459.15, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 155, "tracking": "680000471252317", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 6 pouches RM294.00", "qty": 6, "price": 249.9, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 156, "tracking": "680080970682110", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 4 pouches RM166.60", "qty": 4, "price": 147.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 157, "tracking": "680086371232814", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 4 pouches RM165.64", "qty": 4, "price": 165.64, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 158, "tracking": "MY261129027862S", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Meryem Whitening Facial Cleanser RM15.90 10pcs", "qty": 10, "price": 150.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Shopee", "for": "Aisyah"}, {"id": 159, "tracking": "680081431893316", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "WHITENING FADE SPOTS TONER PAD MERYEM 15pcs; SET SKINCARE MERYEM 5 in 1 (TRIAL SET) 15pcs RM964.20", "qty": 30, "price": 790.95, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 160, "tracking": "680036432593514", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "MOSSDOOM Theora Bag Women’s Handbag Simple Elegant with Accessories 4pcs RM619.92", "qty": 4, "price": 502.77, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 161, "tracking": "680022978682111", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 20 pouches RM980.00", "qty": 20, "price": 848.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 162, "tracking": "680015972902817", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 20 pouches RM980.00", "qty": 20, "price": 799.0, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 163, "tracking": "649152294459", "platform": "Lazada", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Ginseng Collagen Anti-Wrinkle Cream 50g buy 3 free 2 RM59.54", "qty": 5, "price": 38.35, "pickupCode": "S-61968", "nujCost": 0.0, "status": "Scheduled", "remark": "Lazada", "for": "San"}, {"Pickup Code": NaN, "id": 164, "tracking": "NLMYA72359927", "platform": "Lazada", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Glad2Glow Skincare 4PCS set RM115 * 5; Glad2Glow Tone Up Body Serum 100ml 2pcs RM80 * 2; Glad2Glow Tone Up Body Serum 100ml 3pcs RM100 * 2; free gift: comb", "qty": 30, "price": 417.07, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Lazada", "for": "Aisyah"}, {"id": 165, "tracking": "649156533393", "platform": "Lazada", "receiver": "Goh Pau San", "category": "Health Care", "item": "Totaria Glutathione with Collagen Capsules 120 caps RM89.90 2pcs", "qty": 2, "price": 75.69, "pickupCode": "S-61968", "nujCost": 0.0, "status": "Scheduled", "remark": "Lazada", "for": "San"}, {"Pickup Code": NaN, "id": 166, "tracking": "648023542929", "platform": "Lazada", "receiver": "Goh Pau San", "category": "Health Care", "item": "Totaria Magnesium Glycinate with Glycine & Taurine 120 capsules RM109.90 1pc; Totaria USP Methylene Blue Brain Supplement 120 vegan caps RM149.90 1pc", "qty": 2, "price": 112.66, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Lazada", "for": "San"}, {"Pickup Code": NaN, "id": 167, "tracking": "MY2687052499147", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Skintific Perfecting Cushion 0NC Porcelain RM50.99 3pcs; Skintific Panthenol Gel Cleanser 120ml RM60.00 6pcs", "qty": 9, "price": 230.15, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "Aisyah"}, {"id": 168, "tracking": "680060970682113", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 20 pouches RM976.96", "qty": 20, "price": 845.96, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"id": 169, "tracking": "680011572122017", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "DHERBS Minuman Lemon S Tea by Aliff Syukri Terlajak Laris 11 packs RM385.00", "qty": 11, "price": 334.25, "pickupCode": "L‑61912", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 170, "tracking": "680098572912211", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(PAKEJ SAYANG) KOPI CHE'LIMS (25g × 15 sachet) 20 pouches RM980.00", "qty": 20, "price": 849.0, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 171, "tracking": "MY262840969210C", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Turmeric Essence Face Cream Moisturizing & Skin Repairing 3pcs RM17.29*3", "qty": 9, "price": 42.99, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 172, "tracking": "MY2644969058138", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Withyoo Krim ubat gatal kulit 20g RM25.21 6pcs", "qty": 6, "price": 27.51, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 173, "tracking": "680062672182910", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "BOSTANTEN 2‑in‑1 Supple Bag Women’s pull‑out tote/hand bag switchable design 8pcs RM305.03", "qty": 8, "price": 264.09, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 174, "tracking": "680048667232813", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "BOSTANTEN 2‑in‑1 Supple Bag Women’s pull‑out tote/hand bag switchable design 8pcs RM305.03", "qty": 8, "price": 264.09, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 175, "tracking": "680052492542216", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Dherbs Delima Lips Butter 8pcs RM319.04", "qty": 8, "price": 255.04, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 176, "tracking": "680037434893716", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Meryem 2 in 1 Serum Mask 20pcs RM455.00", "qty": 20, "price": 364.0, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 177, "tracking": "680017449783816", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo Meryem Multi Repair Night Cream & Meryem Moisturizer AV 10pcs RM340.74", "qty": 10, "price": 270.74, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 178, "tracking": "680027932443117", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Meryem Cushion Foundation Filter Coverage New 10pcs RM290.01", "qty": 10, "price": 230.17, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 179, "tracking": "680000280172211", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "(Pakej Sayang) Kopi Che’lims 25g x 15 sachet 5 pouches RM215.60", "qty": 5, "price": 203.35, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 180, "tracking": "680010698342717", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "MOSSDOOM Fiorella Bag women’s shoulder tote, elegant everyday commuting 3pcs RM402.84", "qty": 3, "price": 322.04, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 181, "tracking": "680033986182411", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "BOSTANTEN totebag wanita warna solid kapasitas besar untuk perjalanan, boleh simpan iPad 3pcs + beg kertas 1pc RM300.42", "qty": 4, "price": 263.42, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 182, "tracking": "680027158632817", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "BOSTANTEN Wander beg tangan wanita model crescent dengan tali bawah lengan, gaya dan serbaguna untuk penggunaan harian 5pcs RM399.00", "qty": 5, "price": 348.0, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 183, "tracking": "680050494042311", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "SET BORONG 10 PACK MERYEM booster /LIPOBOND APPIE 3pcs RM651.6153", "qty": 30, "price": 523.61, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 184, "tracking": "680061696522211", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "SET BORONG 10 PACK MERYEM booster /LIPOBOND APPIE total 30 packs RM650.11", "qty": 30, "price": 530.11, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 185, "tracking": "680013390132916", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "MOSSDOOM Lona Bag women bag commuter shoulder bag tote bag with zipper fit for 14 inch notebook 2pcs RM425.74", "qty": 2, "price": 345.5, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 186, "tracking": "680018498892013", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "HEYMOLLY RAM – Glossy women shoulder bag beg viral reka bentuk ringkas kulit premium berkilat beg bahu wanita HM3880 10pcs RM393.83", "qty": 14, "price": 349.83, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 187, "tracking": "680056459733213", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "BIO TINTED SUNSCREEN MERYEM 20pcs RM298.00", "qty": 20, "price": 238.4, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 188, "tracking": "MY260845488878F", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Health Care", "item": "PROMO RM26 !! 2 BOTOL Minyak 1001 ×5 set (10 botol) RM100.00", "qty": 10, "price": 114.08, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 189, "tracking": "MY261783486807O", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "<LIVE EXTRA> SKINTIFIC Toner Pads ×5 + Bright Mask ×5 (10 items) RM349.20", "qty": 10, "price": 257.98, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 190, "tracking": "MY268064406622N", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "[New Launch] Glad2Glow Rose Bright 5pcs ×2 set (10 pcs) RM124.00", "qty": 10, "price": 98.58, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 191, "tracking": "MY268909406352H", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "GLOSSMEN LIP SERUM RM39.04 2pcs", "qty": 2, "price": 74.14, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 192, "tracking": "MY269653458520R", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Glad2Glow PDRN 10% Double PDRN Set 3pcs set (2 items each) RM34.99/set + Glad2Glow Silky Shave Deodorant Serum 45ml 1pc RM11.43 (RM116.40)", "qty": 7, "price": 99.31, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 193, "tracking": "MY24640678119X", "platform": "Shopee", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Glad2Glow Peach Retinol Moisturizer 4pcs RM63.17 + Glad2Glow Blueberry Repair Ceramide 100g 1pc RM36.99 (RM101.06)", "qty": 5, "price": 80.89, "pickupCode": "", "nujCost": 0.0, "status": "Pending", "remark": "Shopee", "for": "San"}, {"Pickup Code": NaN, "id": 194, "tracking": "680026310093515", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "AS New Sophea Tote Bag vegan leather 10pcs RM364.10", "qty": 10, "price": 328.3, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 195, "tracking": "680060003623813", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo Meryem Cleanser & Sunscreen 12pcs + Meryem concealer full coverage 12pcs RM426.79", "qty": 24, "price": 340.79, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 196, "tracking": "680046449302910", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo Putih Suci 1 sabun + 1 krim 10 sets + Magic Foundation Flawless Skin 15pcs RM396.10", "qty": 25, "price": 332.35, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 196, "tracking": "680079205043616", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Lipobond Apple 5 sachet + Spanish latte 7 sachets total 20pcs RM778.45", "qty": 20, "price": 622.45, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 197, "tracking": "680042494032018", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "Bostanten Women’s Shell Handbags 8pcs RM359.12", "qty": 8, "price": 294.48, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 198, "tracking": "680021152043010", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Teashell 5% Serum Niacinamide + sabun 10 sets (20 items) RM256.88", "qty": 20, "price": 216.56, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 199, "tracking": "680036846532417", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Set Meryem Skincare Special Edition 5pcs RM582.26", "qty": 5, "price": 462.26, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 200, "tracking": "680029448202914", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo Tinted & Magic Blush 20pcs (total 40pcs) RM313.04", "qty": 40, "price": 249.44, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 201, "tracking": "680011025673610", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Mantul Up by Ita 20pcs + Set Skincare Meryem 10pcs RM937.30", "qty": 30, "price": 611.5, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 202, "tracking": "680070692522312", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "AS Syawal Tote Bag Vegan Leather 9pcs RM258.30", "qty": 9, "price": 231.44, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 203, "tracking": "680085386312113", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo Putih Suci 1 sabun 1 krim 10pcs (total 20pcs) RM159.00", "qty": 20, "price": 135.15, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 204, "tracking": "680028714973913", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Garment", "item": "S Mariposa Silla – Cotton Voile 13pcs RM220.87", "qty": 13, "price": 220.87, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 205, "tracking": "680097990112812", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "Kstyle Kai's Glossy Leather Bag 8pcs RM367.20", "qty": 8, "price": 298.76, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 206, "tracking": "680044110573112", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo Toner Pad & Cleanser Meryem 20pcs, Latte Butterscotch Frosted Double Boost Sample 20pcs RM958.60", "qty": 40, "price": 780.65, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 207, "tracking": "680099992222715", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "Adys Snap Unisex Super Premium Nylon 6pcs RM275.40", "qty": 6, "price": 239.32, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 208, "tracking": "680041391412418", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Fashion Acc", "item": "HEYMOLLY Megan Baldu Women Crossbody Bag 12pcs RM309.87", "qty": 12, "price": 255.71, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 209, "tracking": "680098567322618", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Others", "item": "Barli tanpa gula putih, extract kurma delima gymnema 3pcs × 6 set (total 18pcs) RM224.82", "qty": 18, "price": 214.18, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 210, "tracking": "680017473912418", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "Kopi CheLims 25g x 15 sachet Kopi Campuran Ekstrak Gingko Biloba dan Serbuk Likopena 9 pouches RM441", "qty": 9, "price": 379.85, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 211, "tracking": "680048650413414", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "PUTEH EDITION LUXE 1KG Minuman Serbuk Babies Blinks Datin Lyanaz Hassan Edisi Terhad 11pcs RM718.19", "qty": 11, "price": 509.63, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 212, "tracking": "680072750223010", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Health Care", "item": "PUTEH EDITION LUXE 1KG Minuman Serbuk Babies Blinks Datin Lyanaz Hassan Edisi Terhad 10pcs RM648.63", "qty": 10, "price": 532.03, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}, {"Pickup Code": NaN, "id": 213, "tracking": "680032140043016", "platform": "TikTok", "receiver": "Goh Pau San", "category": "Beauty Care", "item": "Combo 2 botol spray DNA salmon Meryem 9pcs RM315", "qty": 18, "price": 223.56, "pickupCode": "", "nujCost": 0.0, "status": "Scheduled", "remark": "Tiktok", "for": "Aisyah"}];
+
+// ===================== STATE =====================
+let parcels = [];
+let currentFilter = 'all';
+let currentPage = 1;
+let perPage = 20;
+let currentModalId = null;
+let player = { level: 1, xp: 0, totalXP: 0 };
+
+const LEVEL_TITLES = [
+  { level: 1, title: "Parcel Novice", subtitle: "Just getting started on your tracking journey!" },
+  { level: 5, title: "Delivery Scout", subtitle: "You're getting the hang of this!" },
+  { level: 10, title: "Package Hunter", subtitle: "No parcel escapes your watch!" },
+  { level: 20, title: "Logistics Ranger", subtitle: "You're a tracking master!" },
+  { level: 35, title: "Shipping Warlord", subtitle: "King of the supply chain!" },
+  { level: 50, title: "Parcel Overlord", subtitle: "Legendary tracker status achieved!" },
+  { level: 75, title: "Supply Chain Deity", subtitle: "You ARE the logistics." },
+  { level: 100, title: "Universal Courier", subtitle: "Transcendent tracking mastery." }
+];
+
+const ACHIEVEMENTS = [
+  { id: 'first_parcel', name: 'First Steps', desc: 'Track your first parcel', icon: '👣', condition: (p) => p.length >= 1 },
+  { id: 'ten_parcels', name: 'Getting Serious', desc: 'Track 10 parcels', icon: '📦', condition: (p) => p.length >= 10 },
+  { id: 'fifty_parcels', name: 'Hoarder', desc: 'Track 50 parcels', icon: '🏚️', condition: (p) => p.length >= 50 },
+  { id: 'hundred_parcels', name: 'Centurion', desc: 'Track 100 parcels', icon: '💯', condition: (p) => p.length >= 100 },
+  { id: 'two_hundred', name: 'Double Century', desc: 'Track 200 parcels', icon: '🔥', condition: (p) => p.length >= 200 },
+  { id: 'delivery_master', name: 'Delivery Master', desc: '50 parcels delivered', icon: '✅', condition: (p) => p.filter(x=>x.status==='Delivered').length >= 50 },
+  { id: 'platform_explorer', name: 'Platform Explorer', desc: 'Used all 3 platforms', icon: '🌐', condition: (p) => new Set(p.map(x=>x.platform)).size >= 3 },
+  { id: 'big_spender', name: 'Big Spender', desc: 'Spent RM 5,000+ total', icon: '💸', condition: (p) => p.reduce((s,x)=>s+x.price,0) >= 5000 },
+  { id: 'variety_pack', name: 'Variety Pack', desc: '5+ different categories', icon: '🎨', condition: (p) => new Set(p.map(x=>x.category)).size >= 5 },
+  { id: 'pending_patience', name: 'Patience of a Saint', desc: '20+ pending parcels', icon: '⏳', condition: (p) => p.filter(x=>x.status==='Pending').length >= 20 },
+  { id: 'scheduled_king', name: 'Planner', desc: '20+ scheduled parcels', icon: '📅', condition: (p) => p.filter(x=>x.status==='Scheduled').length >= 20 },
+  { id: 'refund_king', name: 'Refund Warrior', desc: '5+ refunded parcels', icon: '💰', condition: (p) => p.filter(x=>x.status==='Refunded').length >= 5 },
+  { id: 'cancelled_crew', name: 'Cancelled Crew', desc: '5+ cancelled parcels', icon: '❌', condition: (p) => p.filter(x=>x.status==='Cancelled').length >= 5 },
+  { id: 'health_guru', name: 'Health Guru', desc: '30+ health care items', icon: '💊', condition: (p) => p.filter(x=>x.category==='Health Care').length >= 30 },
+  { id: 'beauty_queen', name: 'Beauty Queen', desc: '50+ beauty care items', icon: '💄', condition: (p) => p.filter(x=>x.category==='Beauty Care').length >= 50 },
+  { id: 'fashionista', name: 'Fashionista', desc: '20+ fashion items', icon: '👜', condition: (p) => p.filter(x=>x.category==='Fashion Acc').length >= 20 },
+  { id: 'techie', name: 'Techie', desc: '10+ electronics', icon: '🔌', condition: (p) => p.filter(x=>x.category==='Elec. Appl.').length >= 10 },
+  { id: 'lazada_loyal', name: 'Lazada Loyal', desc: '50+ Lazada parcels', icon: '🛒', condition: (p) => p.filter(x=>x.platform==='Lazada').length >= 50 },
+  { id: 'shopee_squad', name: 'Shopee Squad', desc: '50+ Shopee parcels', icon: '🍊', condition: (p) => p.filter(x=>x.platform==='Shopee').length >= 50 },
+  { id: 'tiktok_trend', name: 'TikTok Trend', desc: '50+ TikTok parcels', icon: '🎵', condition: (p) => p.filter(x=>x.platform==='TikTok').length >= 50 },
+  { id: 'for_san', name: "San's Stash", desc: '20+ parcels for San', icon: '🧑', condition: (p) => p.filter(x=>x.for==='San').length >= 20 },
+  { id: 'for_aisyah', name: "Aisyah's Empire", desc: '50+ parcels for Aisyah', icon: '👧', condition: (p) => p.filter(x=>x.for==='Aisyah').length >= 50 },
+];
+
+const STATUS_CYCLE = ['Pending','Scheduled','Delivered','Refunded','Cancelled','Consolidated'];
+const STATUS_COLORS = {
+  'Delivered': 'status-delivered',
+  'Pending': 'status-pending',
+  'Scheduled': 'status-scheduled',
+  'Cancelled': 'status-cancelled',
+  'Refunded': 'status-refunded',
+  'Consolidated': 'status-consolidated'
+};
+const PLATFORM_COLORS = {
+  'Lazada': '#0f156d',
+  'Shopee': '#ee4d2d',
+  'TikTok': '#ff0050'
+};
+const CATEGORY_COLORS = {
+  'Health Care': '#ef4444',
+  'Beauty Care': '#ec4899',
+  'Elec. Appl.': '#3b82f6',
+  'Fashion Acc': '#8b5cf6',
+  'Others': '#6b7280',
+  'Kitchen': '#f59e0b',
+  'Garment': '#10b981',
+  'Home': '#06b6d4',
+  'Printed': '#84cc16'
+};
+
+// ===================== XP SYSTEM =====================
+function getXPForLevel(lvl) { return Math.floor(100 * Math.pow(1.15, lvl - 1)); }
+function getLevelTitle(lvl) {
+  for (let i = LEVEL_TITLES.length - 1; i >= 0; i--) {
+    if (lvl >= LEVEL_TITLES[i].level) return LEVEL_TITLES[i];
+  }
+  return LEVEL_TITLES[0];
+}
+function calcXP() {
+  let xp = 0;
+  parcels.forEach(p => {
+    xp += 10;
+    if (p.status === 'Delivered') xp += 15;
+    if (p.status === 'Pending') xp += 5;
+    if (p.status === 'Scheduled') xp += 8;
+    if (p.status === 'Refunded') xp += 3;
+    if (p.status === 'Cancelled') xp += 2;
+    if (p.status === 'Consolidated') xp += 5;
+    xp += Math.floor(p.price / 50);
+    xp += Math.min(p.qty, 10);
+  });
+  return xp;
+}
+function updateLevel() {
+  const newTotalXP = calcXP();
+  const oldLevel = player.level;
+  let lvl = 1, xpNeeded = getXPForLevel(1), accumulated = 0;
+  while (accumulated + xpNeeded <= newTotalXP) {
+    accumulated += xpNeeded;
+    lvl++;
+    xpNeeded = getXPForLevel(lvl);
+  }
+  const xpInLevel = newTotalXP - accumulated;
+  const xpForNext = xpNeeded;
+  const pct = Math.min(100, (xpInLevel / xpForNext) * 100);
+
+  player.level = lvl;
+  player.xp = xpInLevel;
+  player.totalXP = newTotalXP;
+
+  document.getElementById('levelNum').textContent = lvl;
+  const title = getLevelTitle(lvl);
+  document.getElementById('levelTitle').textContent = title.title;
+  document.getElementById('levelSubtitle').textContent = title.subtitle;
+  document.getElementById('xpBar').style.width = pct + '%';
+  document.getElementById('xpCurrent').textContent = xpInLevel + ' XP';
+  document.getElementById('xpNext').textContent = xpForNext + ' XP to Lv.' + (lvl + 1);
+  document.getElementById('totalXP').textContent = newTotalXP.toLocaleString();
+
+  if (lvl > oldLevel) {
+    showLevelup(lvl, title.title);
+  }
+}
+
+// ===================== CSV IMPORT =====================
+function triggerImport() {
+  document.getElementById('csvInput').click();
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]);
+  const result = [];
+  for (let i = 1; i < lines.length; i++) {
+    const values = parseCSVLine(lines[i]);
+    if (values.length < 3) continue;
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h.trim()] = values[idx] !== undefined ? values[idx].trim() : ''; });
+    result.push(obj);
+  }
+  return result;
+}
+function parseCSVLine(line) {
+  const result = [];
+  let current = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current); current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current);
+  return result;
+}
+function normalizeCSVRow(row) {
+  const get = (keys) => {
+    for (const k of keys) {
+      for (const rk of Object.keys(row)) {
+        if (rk.trim().toLowerCase() === k.toLowerCase()) return row[rk];
+      }
+    }
+    return '';
+  };
+  const platform = get(['Platform']).trim();
+  const tracking = get(['Tracking']).trim();
+  if (!platform || !tracking) return null;
+  return {
+    id: parcels.length > 0 ? Math.max(...parcels.map(p=>p.id)) + 1 : 1,
+    platform: platform,
+    tracking: tracking,
+    receiver: get(['Receiver']).trim() || 'GOH PAU SAN',
+    category: get(['Category']).trim() || 'Others',
+    item: get(['Item Description', 'Item']).trim() || 'Unknown Item',
+    qty: parseInt(get(['Qty', 'Quantity'])) || 1,
+    price: parseFloat(get(['Price (RM)', 'Price', 'Price(RM)'])) || 0,
+    pickupCode: get(['Pickup Code', 'PickupCode']).trim(),
+    nujCost: parseFloat(get(['NUJ Cost', 'NUJCost'])) || 0,
+    status: get(['Status']).trim() || 'Pending',
+    remark: get(['Remark']).trim(),
+    for: get(['For']).trim() || 'San'
+  };
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    const text = ev.target.result;
+    const rows = parseCSV(text);
+    let added = 0;
+    rows.forEach(row => {
+      const p = normalizeCSVRow(row);
+      if (p) { parcels.push(p); added++; }
+    });
+    if (added > 0) {
+      saveData();
+      render();
+      showToast('📁 Imported ' + added + ' parcels! +' + (added * 10) + ' XP', 'xp');
+    } else {
+      showToast('⚠️ No valid parcels found in CSV', 'warning');
+    }
+  };
+  reader.onerror = function() {
+    showToast('❌ Error reading file', 'danger');
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// Drag & drop
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', function(e) { e.preventDefault(); e.stopPropagation(); this.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', function(e) { e.preventDefault(); e.stopPropagation(); this.classList.remove('dragover'); });
+dropZone.addEventListener('drop', function(e) {
+  e.preventDefault(); e.stopPropagation();
+  this.classList.remove('dragover');
+  const files = e.dataTransfer.files;
+  if (files.length > 0 && files[0].name.toLowerCase().endsWith('.csv')) {
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+      const rows = parseCSV(ev.target.result);
+      let added = 0;
+      rows.forEach(row => {
+        const p = normalizeCSVRow(row);
+        if (p) { parcels.push(p); added++; }
+      });
+      if (added > 0) {
+        saveData();
+        render();
+        showToast('📁 Dropped ' + added + ' parcels! +' + (added * 10) + ' XP', 'xp');
+      } else {
+        showToast('⚠️ No valid parcels found', 'warning');
+      }
+    };
+    reader.readAsText(files[0]);
+  }
+});
+
+// ===================== EXPORT =====================
+function exportCSV() {
+  if (parcels.length === 0) { showToast('No parcels to export', 'warning'); return; }
+  const headers = ['#','Platform','Tracking','Receiver','Category','Item Description','Qty','Price (RM)','Pickup Code','NUJ Cost','Status','Remark','For'];
+  const escape = function(s) { s = String(s ?? ''); if (s.includes(',') || s.includes('"') || s.includes('\n')) return '"' + s.replace(/"/g, '""') + '"'; return s; };
+  let csv = headers.map(escape).join(',') + '\n';
+  parcels.forEach(function(p) {
+    const row = [p.id, p.platform, p.tracking, p.receiver, p.category, p.item, p.qty, p.price, p.pickupCode, p.nujCost, p.status, p.remark, p.for];
+    csv += row.map(escape).join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'parcels_export_' + new Date().toISOString().slice(0,10) + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('💾 CSV exported!', 'success');
+}
+
+// ===================== STORAGE =====================
+function saveData() {
+  try { localStorage.setItem('parcelQuest_data', JSON.stringify(parcels)); } catch(e) {}
+}
+function loadData() {
+  try {
+    const saved = localStorage.getItem('parcelQuest_data');
+    if (saved) { parcels = JSON.parse(saved); return; }
+  } catch(e) {}
+  parcels = JSON.parse(JSON.stringify(INITIAL_PARCELS));
+}
+function clearAll() {
+  if (!confirm('Clear ALL parcels? This cannot be undone.')) return;
+  parcels = [];
+  saveData();
+  render();
+  showToast('🗑️ All parcels cleared', 'danger');
+}
+
+// ===================== RENDERING =====================
+function getFiltered() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const platform = document.getElementById('platformFilter').value;
+  const category = document.getElementById('categoryFilter').value;
+  const forWho = document.getElementById('forFilter').value;
+  return parcels.filter(function(p) {
+    if (currentFilter !== 'all' && p.status !== currentFilter) return false;
+    if (platform && p.platform !== platform) return false;
+    if (category && p.category !== category) return false;
+    if (forWho && p.for !== forWho) return false;
+    if (search) {
+      const hay = (p.tracking + ' ' + p.item + ' ' + p.receiver + ' ' + p.platform + ' ' + p.status + ' ' + p.for).toLowerCase();
+      return hay.includes(search);
+    }
+    return true;
+  });
+}
+function render() {
+  updateLevel();
+  renderStats();
+  renderBreakdown();
+  renderAchievements();
+  renderFilters();
+  renderTable();
+}
+function renderStats() {
+  const counts = {
+    all: parcels.length,
+    Delivered: parcels.filter(function(p){return p.status==='Delivered';}).length,
+    Pending: parcels.filter(function(p){return p.status==='Pending';}).length,
+    Scheduled: parcels.filter(function(p){return p.status==='Scheduled';}).length,
+    Cancelled: parcels.filter(function(p){return p.status==='Cancelled';}).length,
+    Refunded: parcels.filter(function(p){return p.status==='Refunded';}).length,
+    Consolidated: parcels.filter(function(p){return p.status==='Consolidated';}).length
+  };
+  document.getElementById('statTotal').textContent = counts.all;
+  document.getElementById('statDelivered').textContent = counts.Delivered;
+  document.getElementById('statPending').textContent = counts.Pending;
+  document.getElementById('statScheduled').textContent = counts.Scheduled;
+  document.getElementById('statCancelled').textContent = counts.Cancelled;
+  document.getElementById('statRefunded').textContent = counts.Refunded;
+  document.querySelectorAll('.stat-card').forEach(function(card) {
+    card.classList.toggle('active', card.dataset.filter === currentFilter);
+  });
+}
+function renderBreakdown() {
+  const countBy = function(key) {
+    const map = {};
+    parcels.forEach(function(p) { map[p[key]] = (map[p[key]] || 0) + 1; });
+    return Object.entries(map).sort(function(a,b){return b[1]-a[1];});
+  };
+  const renderBars = function(data, containerId, colorMap) {
+    const total = parcels.length || 1;
+    const container = document.getElementById(containerId);
+    container.innerHTML = data.map(function(entry) {
+      const label = entry[0], count = entry[1];
+      const pct = (count / total * 100).toFixed(1);
+      const color = colorMap[label] || '#6b7280';
+      return '<div class="bar-row">' +
+        '<span class="bar-label">' + label + '</span>' +
+        '<div class="bar-track"><div class="bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+        '<span class="bar-value">' + count + '</span>' +
+      '</div>';
+    }).join('');
+  };
+  const platforms = countBy('platform');
+  document.getElementById('platformTotal').textContent = parcels.length + ' total';
+  renderBars(platforms, 'platformBars', PLATFORM_COLORS);
+  const categories = countBy('category');
+  document.getElementById('categoryTotal').textContent = parcels.length + ' total';
+  renderBars(categories, 'categoryBars', CATEGORY_COLORS);
+  const forWhom = countBy('for');
+  document.getElementById('forTotal').textContent = parcels.length + ' total';
+  const forColors = {};
+  forWhom.forEach(function(entry, i) { forColors[entry[0]] = ['#7c5cff','#f472b6','#4ade80','#fbbf24','#60a5fa','#a78bfa'][i % 6]; });
+  renderBars(forWhom, 'forBars', forColors);
+}
+function renderAchievements() {
+  const container = document.getElementById('achievements');
+  container.innerHTML = ACHIEVEMENTS.map(function(ach) {
+    const unlocked = ach.condition(parcels);
+    return '<div class="achievement ' + (unlocked ? 'unlocked' : 'locked') + '">' +
+      '<span class="achievement-icon">' + ach.icon + '</span>' +
+      '<span><strong>' + ach.name + '</strong> — ' + ach.desc + '</span>' +
+    '</div>';
+  }).join('');
+}
+function renderFilters() {
+  const platforms = [...new Set(parcels.map(function(p){return p.platform;}))].sort();
+  const categories = [...new Set(parcels.map(function(p){return p.category;}))].sort();
+  const receivers = [...new Set(parcels.map(function(p){return p.for;}))].sort();
+  const updateSelect = function(id, items) {
+    const sel = document.getElementById(id);
+    const oldVal = sel.value;
+    const label = id==='platformFilter'?'Platforms':id==='categoryFilter'?'Categories':'Receivers';
+    sel.innerHTML = '<option value="">All ' + label + '</option>' +
+      items.map(function(v){return '<option value="' + v + '"' + (v===oldVal?' selected':'') + '>' + v + '</option>';}).join('');
+    if (oldVal && items.includes(oldVal)) sel.value = oldVal;
+  };
+  updateSelect('platformFilter', platforms);
+  updateSelect('categoryFilter', categories);
+  updateSelect('forFilter', receivers);
+}
+function renderTable() {
+  const filtered = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
+  if (currentPage > totalPages) currentPage = totalPages;
+  const start = (currentPage - 1) * perPage;
+  const pageItems = filtered.slice(start, start + perPage);
+  const tbody = document.getElementById('parcelTable');
+  document.getElementById('tableCount').textContent = filtered.length + ' of ' + parcels.length + ' parcels';
+  document.getElementById('pageInfo').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+
+  if (pageItems.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state">' +
+      '<div class="empty-state-icon">📭</div>' +
+      '<div>No parcels found. Try adjusting filters or import a CSV.</div>' +
+    '</div></td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = pageItems.map(function(p) {
+    const statusClass = STATUS_COLORS[p.status] || 'status-pending';
+    const platformColor = PLATFORM_COLORS[p.platform] || '#888';
+    const itemEsc = p.item.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return '<tr onclick="openModal(' + p.id + ')">' +
+      '<td class="col-id" style="color:var(--text-muted);font-weight:700;">' + p.id + '</td>' +
+      '<td class="col-platform"><span class="platform-tag" style="color:' + platformColor + '">' + p.platform + '</span></td>' +
+      '<td><span class="tracking-num">' + p.tracking + '</span></td>' +
+      '<td><div class="item-desc" title="' + itemEsc + '">' + p.item + '</div></td>' +
+      '<td class="col-qty">' + p.qty + '</td>' +
+      '<td class="col-price">' + p.price.toFixed(2) + '</td>' +
+      '<td class="col-status"><span class="status-badge ' + statusClass + '">' + p.status + '</span></td>' +
+      '<td>' + p.for + '</td>' +
+      '<td class="col-actions">' +
+        '<button class="btn" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();cycleStatusId(' + p.id + ')">🔄</button>' +
+        '<button class="btn btn-danger" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();deleteId(' + p.id + ')">🗑️</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ===================== ACTIONS =====================
+function setFilter(status) {
+  currentFilter = status;
+  currentPage = 1;
+  render();
+}
+function prevPage() { if (currentPage > 1) { currentPage--; render(); } }
+function nextPage() {
+  const filtered = getFiltered();
+  const totalPages = Math.ceil(filtered.length / perPage);
+  if (currentPage < totalPages) { currentPage++; render(); }
+}
+function openModal(id) {
+  currentModalId = id;
+  const p = parcels.find(function(x){return x.id === id;});
+  if (!p) return;
+  const content = document.getElementById('modalContent');
+  content.innerHTML =
+    '<div class="modal-row"><span class="modal-label">Platform</span><span class="modal-value">' + p.platform + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Tracking</span><span class="modal-value" style="font-family:monospace;font-size:0.8rem;">' + p.tracking + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Receiver</span><span class="modal-value">' + p.receiver + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Category</span><span class="modal-value">' + p.category + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Item</span><span class="modal-value">' + p.item + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Quantity</span><span class="modal-value">' + p.qty + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Price (RM)</span><span class="modal-value">' + p.price.toFixed(2) + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Pickup Code</span><span class="modal-value">' + (p.pickupCode || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">NUJ Cost</span><span class="modal-value">' + (p.nujCost ? p.nujCost.toFixed(2) : '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Status</span><span class="modal-value"><span class="status-badge ' + (STATUS_COLORS[p.status]||'status-pending') + '">' + p.status + '</span></span></div>' +
+    '<div class="modal-row"><span class="modal-label">Remark</span><span class="modal-value">' + (p.remark || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">For</span><span class="modal-value">' + p.for + '</span></div>';
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal() { document.getElementById('modal').classList.remove('show'); currentModalId = null; }
+function cycleStatus() {
+  if (!currentModalId) return;
+  const p = parcels.find(function(x){return x.id === currentModalId;});
+  if (!p) return;
+  const idx = STATUS_CYCLE.indexOf(p.status);
+  p.status = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  saveData(); render(); openModal(currentModalId);
+  showToast('Status updated to ' + p.status, 'success');
+}
+function cycleStatusId(id) {
+  const p = parcels.find(function(x){return x.id === id;});
+  if (!p) return;
+  const idx = STATUS_CYCLE.indexOf(p.status);
+  p.status = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  saveData(); render();
+  showToast('#' + id + ' → ' + p.status, 'success');
+}
+function deleteCurrent() {
+  if (!currentModalId) return;
+  deleteId(currentModalId);
+  closeModal();
+}
+function deleteId(id) {
+  if (!confirm('Delete parcel #' + id + '?')) return;
+  parcels = parcels.filter(function(p){return p.id !== id;});
+  saveData(); render();
+  showToast('Parcel #' + id + ' deleted', 'danger');
+}
+function addParcel() {
+  const platform = prompt('Platform (Lazada/Shopee/TikTok):', 'Shopee');
+  if (!platform) return;
+  const tracking = prompt('Tracking number:');
+  if (!tracking) return;
+  const item = prompt('Item description:', 'New Item');
+  const qty = parseInt(prompt('Quantity:', '1')) || 1;
+  const price = parseFloat(prompt('Price (RM):', '0')) || 0;
+  const status = prompt('Status (Pending/Scheduled/Delivered/Refunded/Cancelled/Consolidated):', 'Pending');
+  const forWho = prompt('For (San/Aisyah):', 'San');
+  const newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
+  parcels.push({
+    id: newId, platform: platform, tracking: tracking, receiver: 'GOH PAU SAN',
+    category: 'Others', item: item || 'New Item', qty: qty, price: price,
+    pickupCode: '', nujCost: 0, status: status || 'Pending', remark: '', for: forWho || 'San'
+  });
+  saveData(); render();
+  showToast('📦 Parcel #' + newId + ' added! +10 XP', 'xp');
+}
+
+// ===================== UI HELPERS =====================
+function showToast(msg, type) {
+  const container = document.getElementById('toastContainer');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.textContent = msg;
+  container.appendChild(toast);
+  setTimeout(function() {
+    toast.style.animation = 'toastOut 0.3s forwards';
+    setTimeout(function(){toast.remove();}, 300);
+  }, 3000);
+}
+function showLevelup(lvl, title) {
+  document.getElementById('levelupText').textContent = 'Level ' + lvl + ' Reached!';
+  document.getElementById('levelupSub').textContent = 'You are now a ' + title;
+  document.getElementById('levelupOverlay').classList.add('show');
+}
+function closeLevelup() {
+  document.getElementById('levelupOverlay').classList.remove('show');
+}
+
+// ===================== INIT =====================
+loadData();
+render();
+</script>
+</body>
+</html>
