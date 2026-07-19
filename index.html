@@ -683,6 +683,10 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <option value="Consolidated">Consolidated</option>
 </select>
 </div>
+<div class="estimator-form" style="margin-bottom:0;">
+<div class="form-group"><label>Pickup Code</label><input type="text" id="apPickupCode" placeholder="e.g. L-59569 or S-59233"></div>
+<div class="form-group"><label>NUJ Cost ($)</label><input type="number" id="apNujCost" value="0" min="0" step="0.01"></div>
+</div>
 
 </div>
 <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px;">
@@ -1704,6 +1708,8 @@ function editCurrent() {
   document.getElementById("apRemark").value = p.remark || "";
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === p.platform;});
   document.getElementById("apStatus").value = p.status;
+  document.getElementById("apPickupCode").value = p.pickupCode || "";
+  document.getElementById("apNujCost").value = p.nujCost || 0;
   // Show edit modal
   document.getElementById("addParcelModal").classList.add("show");
   document.getElementById("addParcelModal").dataset.editId = String(editId);
@@ -1725,6 +1731,8 @@ function addParcel() {
   document.getElementById("apPrice").value = "0";
   document.getElementById("apRemark").value = "";
   document.getElementById("apStatus").value = "Pending";
+  document.getElementById("apPickupCode").value = "";
+  document.getElementById("apNujCost").value = "0";
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
@@ -1744,6 +1752,8 @@ function closeAddParcelModal() {
   document.getElementById("apPrice").value = "0";
   document.getElementById("apRemark").value = "";
   document.getElementById("apStatus").value = "Pending";
+  document.getElementById("apPickupCode").value = "";
+  document.getElementById("apNujCost").value = "0";
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
@@ -1776,6 +1786,8 @@ function submitAddParcel() {
     // EDIT MODE
     var idx = parcels.findIndex(function(p){return p.id === editId;});
     if (idx >= 0) {
+      var pickupCode = document.getElementById("apPickupCode").value.trim();
+      var nujCost = parseFloat(document.getElementById("apNujCost").value) || 0;
       parcels[idx].tracking = tracking;
       parcels[idx].platform = platform;
       parcels[idx].for = forWho;
@@ -1783,6 +1795,8 @@ function submitAddParcel() {
       parcels[idx].item = item;
       parcels[idx].qty = qty;
       parcels[idx].price = price;
+      parcels[idx].pickupCode = pickupCode;
+      parcels[idx].nujCost = nujCost;
       parcels[idx].status = status;
       parcels[idx].remark = remark;
       parcels[idx].receiver = receiver;
@@ -1796,10 +1810,12 @@ function submitAddParcel() {
   } else {
     // ADD NEW
     var newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
+    var pickupCode = document.getElementById("apPickupCode").value.trim();
+    var nujCost = parseFloat(document.getElementById("apNujCost").value) || 0;
     parcels.push({
       id: newId, platform: platform, tracking: tracking, receiver: receiver,
       category: category, item: item, qty: qty, price: price,
-      pickupCode: "", nujCost: 0, status: status, remark: remark, for: forWho
+      pickupCode: pickupCode, nujCost: nujCost, status: status, remark: remark, for: forWho
     });
     saveData(); renderAll();
     showToast("📦 Parcel #" + newId + " registered! +10 XP", "xp");
