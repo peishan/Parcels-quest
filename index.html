@@ -646,8 +646,8 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="form-group"><label>Phone Number</label><input type="text" id="apPhone" value="6738360189"></div>
 <div class="form-group"><label>For *</label>
 <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
-<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apFor" value="San" checked style="accent-color:var(--accent);"> San</label>
-<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apFor" value="Aisyah" style="accent-color:var(--accent);"> Aisyah</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apFor" value="San" style="accent-color:var(--accent);"> San</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apFor" value="Aisyah" checked style="accent-color:var(--accent);"> Aisyah</label>
 </div>
 </div>
 
@@ -699,6 +699,7 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div id="modalContent"></div>
 <div style="margin-top:14px;display:flex;gap:8px;justify-content:flex-end;">
 <button class="btn" onclick="closeModal()">Close</button>
+<button class="btn btn-info" onclick="editCurrent()">✏️ Edit</button>
 <button class="btn btn-success" onclick="cycleStatus()">Cycle Status</button>
 <button class="btn btn-danger" onclick="deleteCurrent()">Delete</button>
 </div>
@@ -1682,6 +1683,36 @@ function deleteCurrent() {
   deleteId(currentModalId);
   closeModal();
 }
+
+function editCurrent() {
+  if (!currentModalId) return;
+  var p = parcels.find(function(x){return x.id === currentModalId;});
+  if (!p) return;
+  closeModal();
+  // Populate the add parcel form with existing data
+  document.getElementById("apTracking").value = p.tracking;
+  document.getElementById("apReceiver").value = p.receiver;
+  document.getElementById("apPhone").value = "6738360189";
+  // Set "For" radio
+  document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === p.for;});
+  // Set category chip
+  var catChip = document.querySelector('.cat-chip[data-cat="' + p.category + '"]');
+  if (catChip) selectCat(catChip);
+  else { document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('active');}); document.getElementById('apCategory').value = p.category; }
+  document.getElementById("apItem").value = p.item;
+  document.getElementById("apQty").value = p.qty;
+  document.getElementById("apPrice").value = p.price;
+  document.getElementById("apRemark").value = p.remark || "";
+  // Set platform radio
+  document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === p.platform;});
+  document.getElementById("apStatus").value = p.status;
+  // Show modal in edit mode
+  document.getElementById("addParcelModal").classList.add("show");
+  document.getElementById("addParcelModal").dataset.editId = currentModalId;
+  // Change submit button text
+  var submitBtn = document.querySelector('#addParcelModal .btn-primary');
+  if (submitBtn) submitBtn.textContent = "💾 Save Changes";
+}
 function deleteId(id) {
   if (!confirm("Delete parcel #" + id + "?")) return;
   parcels = parcels.filter(function(p){return p.id !== id;});
@@ -1690,6 +1721,7 @@ function deleteId(id) {
 }
 function addParcel() {
   document.getElementById("addParcelModal").classList.add("show");
+  delete document.getElementById("addParcelModal").dataset.editId;
   // Reset form
   document.getElementById("apTracking").value = "";
   document.getElementById("apItem").value = "";
@@ -1698,12 +1730,29 @@ function addParcel() {
   document.getElementById("apRemark").value = "";
   document.getElementById("apStatus").value = "Pending";
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
-  document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "San";});
+  document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
   document.getElementById("apTracking").focus();
+  // Reset submit button text
+  var submitBtn = document.querySelector('#addParcelModal .btn-primary');
+  if (submitBtn) submitBtn.textContent = "📦 Register Parcel";
 }
 function closeAddParcelModal() {
   document.getElementById("addParcelModal").classList.remove("show");
+  delete document.getElementById("addParcelModal").dataset.editId;
+  // Reset form
+  document.getElementById("apTracking").value = "";
+  document.getElementById("apItem").value = "";
+  document.getElementById("apQty").value = "1";
+  document.getElementById("apPrice").value = "0";
+  document.getElementById("apRemark").value = "";
+  document.getElementById("apStatus").value = "Pending";
+  document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
+  document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
+  selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
+  // Reset submit button text
+  var submitBtn = document.querySelector('#addParcelModal .btn-primary');
+  if (submitBtn) submitBtn.textContent = "📦 Register Parcel";
 }
 function selectCat(btn) {
   document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('active');});
@@ -1722,15 +1771,38 @@ function submitAddParcel() {
   var status = document.getElementById("apStatus").value;
   var remark = document.getElementById("apRemark").value.trim();
   var receiver = document.getElementById("apReceiver").value.trim() || "GOH PAU SAN";
-  var newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
-  parcels.push({
-    id: newId, platform: platform, tracking: tracking, receiver: receiver,
-    category: category, item: item, qty: qty, price: price,
-    pickupCode: "", nujCost: 0, status: status, remark: remark, for: forWho
-  });
-  saveData(); renderAll();
+
+  var editId = document.getElementById("addParcelModal").dataset.editId;
+  if (editId) {
+    // Edit existing parcel
+    var idx = parcels.findIndex(function(p){return p.id === parseInt(editId);});
+    if (idx >= 0) {
+      parcels[idx].tracking = tracking;
+      parcels[idx].platform = platform;
+      parcels[idx].for = forWho;
+      parcels[idx].category = category;
+      parcels[idx].item = item;
+      parcels[idx].qty = qty;
+      parcels[idx].price = price;
+      parcels[idx].status = status;
+      parcels[idx].remark = remark;
+      parcels[idx].receiver = receiver;
+      saveData(); renderAll();
+      showToast("💾 Parcel #" + editId + " updated!", "success");
+    }
+    delete document.getElementById("addParcelModal").dataset.editId;
+  } else {
+    // Add new parcel
+    var newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
+    parcels.push({
+      id: newId, platform: platform, tracking: tracking, receiver: receiver,
+      category: category, item: item, qty: qty, price: price,
+      pickupCode: "", nujCost: 0, status: status, remark: remark, for: forWho
+    });
+    saveData(); renderAll();
+    showToast("📦 Parcel #" + newId + " registered! +10 XP", "xp");
+  }
   closeAddParcelModal();
-  showToast("📦 Parcel #" + newId + " registered! +10 XP", "xp");
 }
 
 // ===================== SETTINGS =====================
