@@ -384,9 +384,11 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="section active" id="section-dashboard">
 <div class="page-header">
 <div><div class="page-title">🏠 Dashboard</div><div class="page-subtitle">Your parcel tracking command center</div></div>
-<div style="display:flex;gap:8px;">
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
 <button class="btn btn-primary" onclick="triggerImport()">📁 Import CSV</button>
-<button class="btn" onclick="exportCSV()">💾 Export</button>
+<button class="btn" onclick="exportCSV()">💾 Export CSV</button>
+<button class="btn btn-info" onclick="exportJSON()">📋 Copy JSON</button>
+<button class="btn btn-success" onclick="importJSON()">📋 Paste JSON</button>
 </div>
 </div>
 
@@ -604,6 +606,14 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <button class="btn" onclick="exportCSV()">💾 Export</button>
 </div>
 <div class="settings-row">
+<div><div class="settings-label">Export JSON</div><div class="settings-desc">Copy all data as JSON to clipboard for cross-device transfer</div></div>
+<button class="btn btn-info" onclick="exportJSON()">📋 Copy JSON</button>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Import JSON</div><div class="settings-desc">Paste JSON data from another device</div></div>
+<button class="btn btn-success" onclick="importJSON()">📋 Paste JSON</button>
+</div>
+<div class="settings-row">
 <div><div class="settings-label">Export Price History</div><div class="settings-desc">Download price tracking data as CSV</div></div>
 <button class="btn" onclick="exportPriceCSV()">💾 Export Prices</button>
 </div>
@@ -616,6 +626,36 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="card">
 <div class="card-header"><div class="card-title">📊 Stats Summary</div></div>
 <div id="settingsStats"></div>
+</div>
+
+<div class="card">
+<div class="card-header"><div class="card-title">☁️ GitHub Gist Sync</div></div>
+<div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;padding-bottom:14px;">
+<p>Sync your data across devices using a GitHub Gist. Free, private, and persistent.</p>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">GitHub Token</div><div class="settings-desc">Create a token at github.com/settings/tokens (only 'gist' scope needed)</div></div>
+<input type="password" id="gistToken" placeholder="ghp_xxxxxxxxxxxx" style="width:180px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.8rem;" onchange="saveGistToken()">
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Gist ID</div><div class="settings-desc">Leave blank to create a new gist on first upload</div></div>
+<input type="text" id="gistId" placeholder="Optional gist ID" style="width:180px;padding:8px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.8rem;" onchange="saveGistId()">
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Upload to Gist</div><div class="settings-desc">Save current data to your GitHub Gist</div></div>
+<button class="btn btn-primary" onclick="uploadToGist()">☁️ Upload</button>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Download from Gist</div><div class="settings-desc">Load data from your GitHub Gist (replaces local data)</div></div>
+<button class="btn btn-success" onclick="downloadFromGist()">☁️ Download</button>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Auto-sync on load</div><div class="settings-desc">Automatically download from Gist when app opens</div></div>
+<label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+<input type="checkbox" id="autoSync" onchange="saveAutoSync()" style="accent-color:var(--accent);width:18px;height:18px;">
+<span style="font-size:0.85rem;">Enable</span>
+</label>
+</div>
 </div>
 
 <div class="card">
@@ -1824,7 +1864,165 @@ function submitAddParcel() {
 }
 
 // ===================== SETTINGS =====================
+function exportJSON() {
+  var data = { parcels: parcels, priceHistory: priceHistory, player: player, exportedAt: new Date().toISOString() };
+  var json = JSON.stringify(data, null, 2);
+  navigator.clipboard.writeText(json).then(function() {
+    showToast("📋 JSON copied to clipboard! Paste on another device.", "success");
+  }).catch(function() {
+    // Fallback: create a temporary textarea
+    var ta = document.createElement("textarea");
+    ta.value = json;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    showToast("📋 JSON copied to clipboard! Paste on another device.", "success");
+  });
+}
+
+function importJSON() {
+  var input = prompt("Paste your JSON data here:");
+  if (!input || !input.trim()) return;
+  try {
+    var data = JSON.parse(input.trim());
+    if (data.parcels && Array.isArray(data.parcels)) {
+      if (confirm("Import " + data.parcels.length + " parcels? This will REPLACE current data.")) {
+        parcels = data.parcels;
+        if (data.priceHistory) priceHistory = data.priceHistory;
+        if (data.player) player = data.player;
+        saveData();
+        renderAll();
+        showToast("📋 JSON imported! " + data.parcels.length + " parcels loaded.", "success");
+      }
+    } else {
+      showToast("❌ Invalid JSON format", "danger");
+    }
+  } catch(e) {
+    showToast("❌ JSON parse error: " + e.message, "danger");
+  }
+}
+
+var GIST_FILENAME = "parcel_quest_data.json";
+
+function saveGistToken() {
+  var token = document.getElementById("gistToken").value.trim();
+  try { localStorage.setItem("parcelQuest_gistToken", token); } catch(e) {}
+  showToast("Token saved", "success");
+}
+function saveGistId() {
+  var id = document.getElementById("gistId").value.trim();
+  try { localStorage.setItem("parcelQuest_gistId", id); } catch(e) {}
+  showToast("Gist ID saved", "success");
+}
+function saveAutoSync() {
+  var enabled = document.getElementById("autoSync").checked;
+  try { localStorage.setItem("parcelQuest_autoSync", enabled ? "1" : "0"); } catch(e) {}
+}
+function loadGistSettings() {
+  try {
+    var token = localStorage.getItem("parcelQuest_gistToken");
+    var gistId = localStorage.getItem("parcelQuest_gistId");
+    var autoSync = localStorage.getItem("parcelQuest_autoSync");
+    if (token) document.getElementById("gistToken").value = token;
+    if (gistId) document.getElementById("gistId").value = gistId;
+    if (autoSync === "1" && document.getElementById("autoSync")) document.getElementById("autoSync").checked = true;
+  } catch(e) {}
+}
+
+function uploadToGist() {
+  var token = document.getElementById("gistToken").value.trim();
+  if (!token) { showToast("❌ Enter your GitHub token first", "danger"); return; }
+  var gistId = document.getElementById("gistId").value.trim();
+  var data = { parcels: parcels, priceHistory: priceHistory, player: player, exportedAt: new Date().toISOString() };
+  var json = JSON.stringify(data, null, 2);
+
+  var url = gistId ? "https://api.github.com/gists/" + gistId : "https://api.github.com/gists";
+  var method = gistId ? "PATCH" : "POST";
+  var body = JSON.stringify({
+    description: "Parcel Quest data backup",
+    public: false,
+    files: { "parcel_quest_data.json": { content: json } }
+  });
+
+  showToast("☁️ Uploading to Gist...", "info");
+  fetch(url, {
+    method: method,
+    headers: { "Authorization": "token " + token, "Content-Type": "application/json" },
+    body: body
+  }).then(function(r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }).then(function(result) {
+    var newGistId = result.id;
+    document.getElementById("gistId").value = newGistId;
+    try { localStorage.setItem("parcelQuest_gistId", newGistId); } catch(e) {}
+    showToast("☁️ Uploaded to Gist! ID: " + newGistId, "success");
+  }).catch(function(err) {
+    showToast("❌ Upload failed: " + err.message, "danger");
+  });
+}
+
+function downloadFromGist() {
+  var token = document.getElementById("gistToken").value.trim();
+  var gistId = document.getElementById("gistId").value.trim();
+  if (!gistId) { showToast("❌ Enter a Gist ID first", "danger"); return; }
+
+  var headers = {};
+  if (token) headers["Authorization"] = "token " + token;
+
+  showToast("☁️ Downloading from Gist...", "info");
+  fetch("https://api.github.com/gists/" + gistId, { headers: headers })
+    .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(result) {
+      var file = result.files && result.files["parcel_quest_data.json"];
+      if (!file) { throw new Error("parcel_quest_data.json not found in gist"); }
+      var data = JSON.parse(file.content);
+      if (data.parcels && Array.isArray(data.parcels)) {
+        if (confirm("Download " + data.parcels.length + " parcels from Gist? This will REPLACE local data.")) {
+          parcels = data.parcels;
+          if (data.priceHistory) priceHistory = data.priceHistory;
+          if (data.player) player = data.player;
+          saveData();
+          renderAll();
+          showToast("☁️ Downloaded " + data.parcels.length + " parcels from Gist!", "success");
+        }
+      } else {
+        throw new Error("Invalid data format");
+      }
+    }).catch(function(err) {
+      showToast("❌ Download failed: " + err.message, "danger");
+    });
+}
+
+function autoSyncFromGist() {
+  try {
+    var autoSync = localStorage.getItem("parcelQuest_autoSync");
+    var gistId = localStorage.getItem("parcelQuest_gistId");
+    if (autoSync !== "1" || !gistId) return;
+    var token = localStorage.getItem("parcelQuest_gistToken") || "";
+    var headers = {};
+    if (token) headers["Authorization"] = "token " + token;
+    fetch("https://api.github.com/gists/" + gistId, { headers: headers })
+      .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function(result) {
+        var file = result.files && result.files["parcel_quest_data.json"];
+        if (!file) return;
+        var data = JSON.parse(file.content);
+        if (data.parcels && Array.isArray(data.parcels)) {
+          parcels = data.parcels;
+          if (data.priceHistory) priceHistory = data.priceHistory;
+          if (data.player) player = data.player;
+          saveData();
+          renderAll();
+          showToast("☁️ Auto-synced " + data.parcels.length + " parcels from Gist", "success");
+        }
+      }).catch(function(e) { console.log("Auto-sync skipped:", e.message); });
+  } catch(e) {}
+}
+
 function renderSettings() {
+  loadGistSettings();
   var el = document.getElementById("settingsStats");
   if (!el) return;
   var totalSpent = parcels.reduce(function(s,p){return s+p.price},0);
@@ -1896,6 +2094,7 @@ function renderAll() {
 loadData();
 loadTheme();
 renderAll();
+setTimeout(autoSyncFromGist, 1000);
 </script>
 </body>
 </html>
