@@ -687,7 +687,7 @@ body.light-mode ::-webkit-scrollbar-thumb {
 </div>
 <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px;">
 <button class="btn" onclick="closeAddParcelModal()">Cancel</button>
-<button class="btn btn-primary" onclick="submitAddParcel()">📦 Register Parcel</button>
+<button class="btn btn-primary" id="submitParcelBtn" onclick="submitAddParcel()">📦 Register Parcel</button>
 </div>
 </div>
 </div>
@@ -1685,17 +1685,16 @@ function deleteCurrent() {
 }
 
 function editCurrent() {
-  if (!currentModalId) return;
-  var p = parcels.find(function(x){return x.id === currentModalId;});
-  if (!p) return;
+  if (!currentModalId) { alert("Error: No parcel selected"); return; }
+  var editId = currentModalId;
+  var p = parcels.find(function(x){return x.id === editId;});
+  if (!p) { alert("Error: Parcel #" + editId + " not found in data"); return; }
   closeModal();
-  // Populate the add parcel form with existing data
+  // Populate form
   document.getElementById("apTracking").value = p.tracking;
   document.getElementById("apReceiver").value = p.receiver;
   document.getElementById("apPhone").value = "6738360189";
-  // Set "For" radio
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === p.for;});
-  // Set category chip
   var catChip = document.querySelector('.cat-chip[data-cat="' + p.category + '"]');
   if (catChip) selectCat(catChip);
   else { document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('active');}); document.getElementById('apCategory').value = p.category; }
@@ -1703,15 +1702,12 @@ function editCurrent() {
   document.getElementById("apQty").value = p.qty;
   document.getElementById("apPrice").value = p.price;
   document.getElementById("apRemark").value = p.remark || "";
-  // Set platform radio
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === p.platform;});
   document.getElementById("apStatus").value = p.status;
-  // Show modal in edit mode
+  // Show edit modal
   document.getElementById("addParcelModal").classList.add("show");
-  document.getElementById("addParcelModal").dataset.editId = currentModalId;
-  // Change submit button text
-  var submitBtn = document.querySelector('#addParcelModal .btn-primary');
-  if (submitBtn) submitBtn.textContent = "💾 Save Changes";
+  document.getElementById("addParcelModal").dataset.editId = String(editId);
+  document.getElementById("submitParcelBtn").textContent = "💾 Save Changes";
 }
 function deleteId(id) {
   if (!confirm("Delete parcel #" + id + "?")) return;
@@ -1721,7 +1717,7 @@ function deleteId(id) {
 }
 function addParcel() {
   document.getElementById("addParcelModal").classList.add("show");
-  delete document.getElementById("addParcelModal").dataset.editId;
+  document.getElementById("addParcelModal").dataset.editId = "";
   // Reset form
   document.getElementById("apTracking").value = "";
   document.getElementById("apItem").value = "";
@@ -1734,12 +1730,13 @@ function addParcel() {
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
   document.getElementById("apTracking").focus();
   // Reset submit button text
-  var submitBtn = document.querySelector('#addParcelModal .btn-primary');
+  var submitBtn = document.getElementById("submitParcelBtn");
   if (submitBtn) submitBtn.textContent = "📦 Register Parcel";
 }
 function closeAddParcelModal() {
+  console.log("closeAddParcelModal called");
   document.getElementById("addParcelModal").classList.remove("show");
-  delete document.getElementById("addParcelModal").dataset.editId;
+  document.getElementById("addParcelModal").dataset.editId = "";
   // Reset form
   document.getElementById("apTracking").value = "";
   document.getElementById("apItem").value = "";
@@ -1751,7 +1748,7 @@ function closeAddParcelModal() {
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
   // Reset submit button text
-  var submitBtn = document.querySelector('#addParcelModal .btn-primary');
+  var submitBtn = document.getElementById("submitParcelBtn");
   if (submitBtn) submitBtn.textContent = "📦 Register Parcel";
 }
 function selectCat(btn) {
@@ -1772,10 +1769,12 @@ function submitAddParcel() {
   var remark = document.getElementById("apRemark").value.trim();
   var receiver = document.getElementById("apReceiver").value.trim() || "GOH PAU SAN";
 
-  var editId = document.getElementById("addParcelModal").dataset.editId;
-  if (editId) {
-    // Edit existing parcel
-    var idx = parcels.findIndex(function(p){return p.id === parseInt(editId);});
+  var editIdStr = document.getElementById("addParcelModal").dataset.editId;
+  var editId = parseInt(editIdStr);
+
+  if (!isNaN(editId) && editId > 0) {
+    // EDIT MODE
+    var idx = parcels.findIndex(function(p){return p.id === editId;});
     if (idx >= 0) {
       parcels[idx].tracking = tracking;
       parcels[idx].platform = platform;
@@ -1789,10 +1788,13 @@ function submitAddParcel() {
       parcels[idx].receiver = receiver;
       saveData(); renderAll();
       showToast("💾 Parcel #" + editId + " updated!", "success");
+    } else {
+      alert("ERROR: Parcel #" + editId + " not found. editIdStr was: '" + editIdStr + "'");
+      showToast("❌ Parcel not found", "danger");
     }
-    delete document.getElementById("addParcelModal").dataset.editId;
+    document.getElementById("addParcelModal").dataset.editId = "";
   } else {
-    // Add new parcel
+    // ADD NEW
     var newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
     parcels.push({
       id: newId, platform: platform, tracking: tracking, receiver: receiver,
