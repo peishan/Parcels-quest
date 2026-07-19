@@ -629,9 +629,31 @@ body.light-mode ::-webkit-scrollbar-thumb {
 </div>
 
 <div class="card">
+<div class="card-header"><div class="card-title">🔍 Duplicate Checker</div><div class="card-subtitle">Find parcels with the same tracking number</div></div>
+<div id="duplicateCheckerContent">
+<div class="empty-state"><div class="empty-state-icon">🔍</div><div>Click the button below to scan for duplicate tracking numbers.</div></div>
+</div>
+<div style="margin-top:12px;display:flex;gap:8px;">
+<button class="btn btn-primary" onclick="findDuplicates()">🔍 Find Duplicates</button>
+<button class="btn btn-danger" onclick="removeDuplicatePrompt()">🗑️ Remove Duplicate</button>
+</div>
+</div>
+
+<div class="card">
 <div class="card-header"><div class="card-title">☁️ GitHub Gist Sync</div></div>
 <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;padding-bottom:14px;">
 <p>Sync your data across devices using a GitHub Gist. Free, private, and persistent.</p>
+<p style="margin-top:8px;padding:10px;background:var(--surface-raised);border-radius:8px;border:1px solid var(--border);">
+<strong>How to create your token:</strong><br>
+1. Go to <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--accent);">github.com/settings/tokens/new</a><br>
+2. Select <strong>"Tokens (classic)"</strong> (NOT Fine-grained)<br>
+3. Enter a note like "Parcel Quest"<br>
+4. Set expiration (e.g. 90 days)<br>
+5. ✅ Check only the <strong>"gist"</strong> scope box<br>
+6. Click <strong>Generate token</strong> at the bottom<br>
+7. <strong>Copy the token immediately</strong> (you won't see it again!)<br>
+8. Paste it below
+</p>
 </div>
 <div class="settings-row">
 <div><div class="settings-label">GitHub Token</div><div class="settings-desc">Create a token at github.com/settings/tokens (only 'gist' scope needed)</div></div>
@@ -648,6 +670,10 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="settings-row">
 <div><div class="settings-label">Download from Gist</div><div class="settings-desc">Load data from your GitHub Gist (replaces local data)</div></div>
 <button class="btn btn-success" onclick="downloadFromGist()">☁️ Download</button>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Merge from Gist</div><div class="settings-desc">Add missing parcels from Gist without deleting local ones</div></div>
+<button class="btn btn-info" onclick="mergeFromGist()">🔀 Merge</button>
 </div>
 <div class="settings-row">
 <div><div class="settings-label">Auto-sync on load</div><div class="settings-desc">Automatically download from Gist when app opens</div></div>
@@ -1848,7 +1874,12 @@ function submitAddParcel() {
     }
     document.getElementById("addParcelModal").dataset.editId = "";
   } else {
-    // ADD NEW
+    // ADD NEW - check for duplicate tracking number
+    var existing = parcels.find(function(p){return p.tracking === tracking;});
+    if (existing) {
+      showToast("❌ Tracking number already exists! Parcel #" + existing.id + " (" + existing.platform + ")", "danger");
+      return;
+    }
     var newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
     var pickupCode = document.getElementById("apPickupCode").value.trim();
     var nujCost = parseFloat(document.getElementById("apNujCost").value) || 0;
@@ -1948,10 +1979,17 @@ function uploadToGist() {
   showToast("☁️ Uploading to Gist...", "info");
   fetch(url, {
     method: method,
-    headers: { "Authorization": "token " + token, "Content-Type": "application/json" },
+    headers: { 
+      "Authorization": "Bearer " + token,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2026-03-10",
+      "Content-Type": "application/json"
+    },
     body: body
   }).then(function(r) {
-    if (!r.ok) throw new Error("HTTP " + r.status);
+    if (!r.ok) {
+      return r.text().then(function(text) { throw new Error("HTTP " + r.status + ": " + text.substring(0,200)); });
+    }
     return r.json();
   }).then(function(result) {
     var newGistId = result.id;
@@ -1960,6 +1998,7 @@ function uploadToGist() {
     showToast("☁️ Uploaded to Gist! ID: " + newGistId, "success");
   }).catch(function(err) {
     showToast("❌ Upload failed: " + err.message, "danger");
+    console.error("Gist upload error:", err);
   });
 }
 
@@ -1968,12 +2007,20 @@ function downloadFromGist() {
   var gistId = document.getElementById("gistId").value.trim();
   if (!gistId) { showToast("❌ Enter a Gist ID first", "danger"); return; }
 
-  var headers = {};
-  if (token) headers["Authorization"] = "token " + token;
+  var headers = {
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2026-03-10"
+  };
+  if (token) headers["Authorization"] = "Bearer " + token;
 
   showToast("☁️ Downloading from Gist...", "info");
   fetch("https://api.github.com/gists/" + gistId, { headers: headers })
-    .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function(r) { 
+      if (!r.ok) {
+        return r.text().then(function(text) { throw new Error("HTTP " + r.status + ": " + text.substring(0,200)); });
+      }
+      return r.json(); 
+    })
     .then(function(result) {
       var file = result.files && result.files["parcel_quest_data.json"];
       if (!file) { throw new Error("parcel_quest_data.json not found in gist"); }
@@ -1992,6 +2039,87 @@ function downloadFromGist() {
       }
     }).catch(function(err) {
       showToast("❌ Download failed: " + err.message, "danger");
+      console.error("Gist download error:", err);
+    });
+}
+
+function mergeFromGist() {
+  var token = document.getElementById("gistToken").value.trim();
+  var gistId = document.getElementById("gistId").value.trim();
+  if (!gistId) { showToast("❌ Enter a Gist ID first", "danger"); return; }
+
+  var headers = {
+    "Accept": "application/vnd.github+json",
+    "X-GitHub-Api-Version": "2026-03-10"
+  };
+  if (token) headers["Authorization"] = "Bearer " + token;
+
+  showToast("☁️ Downloading from Gist for merge...", "info");
+  fetch("https://api.github.com/gists/" + gistId, { headers: headers })
+    .then(function(r) { 
+      if (!r.ok) {
+        return r.text().then(function(text) { throw new Error("HTTP " + r.status + ": " + text.substring(0,200)); });
+      }
+      return r.json(); 
+    })
+    .then(function(result) {
+      var file = result.files && result.files["parcel_quest_data.json"];
+      if (!file) { throw new Error("parcel_quest_data.json not found in gist"); }
+      var data = JSON.parse(file.content);
+      if (!data.parcels || !Array.isArray(data.parcels)) { throw new Error("Invalid data format"); }
+
+      // Merge logic: add parcels from Gist that don't exist locally (by tracking number)
+      var localTrackings = {};
+      parcels.forEach(function(p) { localTrackings[p.tracking] = p; });
+
+      var added = 0, updated = 0;
+      data.parcels.forEach(function(gistParcel) {
+        if (!gistParcel.tracking) return;
+        if (!localTrackings[gistParcel.tracking]) {
+          // Parcel exists in Gist but not locally - add it
+          parcels.push(gistParcel);
+          localTrackings[gistParcel.tracking] = gistParcel;
+          added++;
+        } else {
+          // Parcel exists in both - optionally update if Gist is newer
+          // For now, keep local version but update if status is more advanced
+          var localP = localTrackings[gistParcel.tracking];
+          var statusOrder = { "Pending": 0, "Scheduled": 1, "Delivered": 2, "Refunded": 3, "Cancelled": 4, "Consolidated": 5 };
+          var gistStatusVal = statusOrder[gistParcel.status] || 0;
+          var localStatusVal = statusOrder[localP.status] || 0;
+          if (gistStatusVal > localStatusVal) {
+            localP.status = gistParcel.status;
+            updated++;
+          }
+        }
+      });
+
+      // Also merge price history (deduplicate by item+platform+price+date)
+      if (data.priceHistory && Array.isArray(data.priceHistory)) {
+        var localPriceKeys = {};
+        priceHistory.forEach(function(ph) {
+          localPriceKeys[(ph.item || "") + "|" + (ph.platform || "") + "|" + ph.price + "|" + (ph.date || "")] = true;
+        });
+        data.priceHistory.forEach(function(ph) {
+          var key = (ph.item || "") + "|" + (ph.platform || "") + "|" + ph.price + "|" + (ph.date || "");
+          if (!localPriceKeys[key]) {
+            priceHistory.push(ph);
+            localPriceKeys[key] = true;
+          }
+        });
+      }
+
+      // Merge player XP (take the higher of the two)
+      if (data.player && data.player.totalXP > player.totalXP) {
+        player = data.player;
+      }
+
+      saveData();
+      renderAll();
+      showToast("🔀 Merged! Added " + added + " new parcels, updated " + updated + " statuses. Total: " + parcels.length, "success");
+    }).catch(function(err) {
+      showToast("❌ Merge failed: " + err.message, "danger");
+      console.error("Gist merge error:", err);
     });
 }
 
@@ -2001,8 +2129,11 @@ function autoSyncFromGist() {
     var gistId = localStorage.getItem("parcelQuest_gistId");
     if (autoSync !== "1" || !gistId) return;
     var token = localStorage.getItem("parcelQuest_gistToken") || "";
-    var headers = {};
-    if (token) headers["Authorization"] = "token " + token;
+    var headers = {
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2026-03-10"
+    };
+    if (token) headers["Authorization"] = "Bearer " + token;
     fetch("https://api.github.com/gists/" + gistId, { headers: headers })
       .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function(result) {
@@ -2019,6 +2150,75 @@ function autoSyncFromGist() {
         }
       }).catch(function(e) { console.log("Auto-sync skipped:", e.message); });
   } catch(e) {}
+}
+
+function findDuplicates() {
+  var trackingMap = {};
+  var duplicates = [];
+  parcels.forEach(function(p) {
+    var key = p.tracking;
+    if (!key) return;
+    if (trackingMap[key]) {
+      duplicates.push({ tracking: key, parcels: [trackingMap[key], p] });
+    } else {
+      trackingMap[key] = p;
+    }
+  });
+
+  var container = document.getElementById("duplicateCheckerContent");
+  if (duplicates.length === 0) {
+    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div>No duplicates found! All tracking numbers are unique.</div></div>';
+    showToast("✅ No duplicate tracking numbers found", "success");
+    return;
+  }
+
+  var html = '<div style="font-size:0.85rem;margin-bottom:8px;"><strong>' + duplicates.length + ' duplicate tracking number(s) found:</strong></div>';
+  html += '<div style="max-height:300px;overflow-y:auto;">';
+  duplicates.forEach(function(dup, idx) {
+    html += '<div style="padding:10px;margin-bottom:8px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);">';
+    html += '<div style="font-weight:700;color:var(--danger);margin-bottom:6px;">#' + (idx+1) + '. Tracking: <span style="font-family:monospace;">' + dup.tracking + '</span></div>';
+    dup.parcels.forEach(function(p) {
+      var statusClass = STATUS_COLORS[p.status] || "status-pending";
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">';
+      html += '<span>Parcel #' + p.id + ' — ' + p.item.substring(0,40) + (p.item.length>40?"...":"") + '</span>';
+      html += '<span class="status-badge ' + statusClass + '">' + p.status + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+  showToast("⚠️ Found " + duplicates.length + " duplicate tracking number(s)", "warning");
+}
+
+function removeDuplicatePrompt() {
+  var tracking = prompt("Enter the tracking number of the duplicate parcel to remove:");
+  if (!tracking || !tracking.trim()) return;
+  tracking = tracking.trim();
+
+  var matches = parcels.filter(function(p){return p.tracking === tracking;});
+  if (matches.length === 0) { showToast("❌ No parcel found with that tracking number", "danger"); return; }
+  if (matches.length === 1) { showToast("ℹ️ Only one parcel found with that tracking number (not a duplicate)", "info"); return; }
+
+  var msg = "Found " + matches.length + " parcels with tracking "" + tracking + "":\n";
+  matches.forEach(function(p) {
+    msg += "\n#" + p.id + " — " + p.platform + " — " + p.status + " — " + p.item.substring(0,30);
+  });
+  msg += "\n\nEnter the Parcel # to DELETE (or Cancel to keep all):";
+
+  var idToDelete = prompt(msg);
+  if (!idToDelete || !idToDelete.trim()) return;
+  var deleteId = parseInt(idToDelete.trim());
+  if (isNaN(deleteId)) { showToast("❌ Invalid parcel number", "danger"); return; }
+
+  var idx = parcels.findIndex(function(p){return p.id === deleteId && p.tracking === tracking;});
+  if (idx < 0) { showToast("❌ Parcel #" + deleteId + " not found with that tracking number", "danger"); return; }
+
+  if (confirm("Are you sure you want to delete Parcel #" + deleteId + "?")) {
+    parcels.splice(idx, 1);
+    saveData(); renderAll();
+    showToast("🗑️ Parcel #" + deleteId + " deleted. Remaining with this tracking: " + (matches.length-1), "success");
+  }
 }
 
 function renderSettings() {
