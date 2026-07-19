@@ -374,7 +374,8 @@ body.light-mode ::-webkit-scrollbar-thumb {
 </nav>
 <div class="sidebar-footer">
 <div id="sidebarLevel">Lv. 1 Parcel Novice</div>
-<div style="margin-top:2px;">v2.0</div>
+<div id="saveIndicator" style="margin-top:4px;font-size:0.65rem;color:var(--text-muted);">💾 autosaved</div>
+<div style="margin-top:2px;">v2.7</div>
 </div>
 </aside>
 <main class="main" id="main">
@@ -616,6 +617,10 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="settings-row">
 <div><div class="settings-label">Export Price History</div><div class="settings-desc">Download price tracking data as CSV</div></div>
 <button class="btn" onclick="exportPriceCSV()">💾 Export Prices</button>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Save Now</div><div class="settings-desc">Force-save all data to localStorage immediately</div></div>
+<button class="btn btn-success" onclick="saveData();showToast('💾 Data saved!', 'success');">💾 Save Now</button>
 </div>
 <div class="settings-row">
 <div><div class="settings-label">Clear All Data</div><div class="settings-desc">Remove all parcels and reset progress. Cannot be undone.</div></div>
@@ -1041,6 +1046,8 @@ function saveData() {
   try { localStorage.setItem("parcelQuest_data", JSON.stringify(parcels)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_prices", JSON.stringify(priceHistory)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_player", JSON.stringify(player)); } catch(e) {}
+  lastSaveTime = Date.now();
+  updateSaveIndicator();
 }
 function loadData() {
   try {
@@ -2283,10 +2290,51 @@ function renderAll() {
   renderSettings();
 }
 
+// ===================== AUTO-SAVE =====================
+var autoSaveInterval = null;
+var lastSaveTime = Date.now();
+
+function startAutoSave() {
+  if (autoSaveInterval) clearInterval(autoSaveInterval);
+  autoSaveInterval = setInterval(function() {
+    saveData();
+    lastSaveTime = Date.now();
+    updateSaveIndicator();
+  }, 30000); // Save every 30 seconds
+}
+
+function updateSaveIndicator() {
+  var el = document.getElementById("saveIndicator");
+  if (!el) return;
+  var seconds = Math.floor((Date.now() - lastSaveTime) / 1000);
+  if (seconds < 5) el.textContent = "💾 autosaved";
+  else if (seconds < 60) el.textContent = "💾 autosaved " + seconds + "s ago";
+  else el.textContent = "💾 autosaved " + Math.floor(seconds / 60) + "m ago";
+}
+
+// Save before page refresh/close
+window.addEventListener("beforeunload", function(e) {
+  saveData();
+  // If there are unsaved changes (parcels modified since last save), warn user
+  // But since we auto-save, this is mostly a safety net
+});
+
+// Also save when page becomes hidden (switching apps on mobile)
+document.addEventListener("visibilitychange", function() {
+  if (document.hidden) {
+    saveData();
+    lastSaveTime = Date.now();
+  }
+});
+
+// Update save indicator every 10 seconds
+setInterval(updateSaveIndicator, 10000);
+
 // ===================== INIT =====================
 loadData();
 loadTheme();
 renderAll();
+startAutoSave();
 setTimeout(autoSyncFromGist, 1000);
 </script>
 </body>
