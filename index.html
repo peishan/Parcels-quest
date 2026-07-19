@@ -330,6 +330,30 @@ body.light-mode ::-webkit-scrollbar-thumb {
   transform: scale(1.1);
   box-shadow: 0 6px 25px var(--accent-glow);
 }
+
+.cat-chip {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.cat-chip:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+.cat-chip.active {
+  background: linear-gradient(135deg, var(--accent), #a855f7);
+  border-color: transparent;
+  color: white;
+  box-shadow: 0 0 12px var(--accent-glow);
+}
 </style>
 </head>
 <body>
@@ -605,6 +629,67 @@ body.light-mode ::-webkit-scrollbar-thumb {
 </div>
 </div>
 </main>
+</div>
+
+<!-- Add Parcel Modal -->
+<div class="modal-overlay" id="addParcelModal" onclick="if(event.target===this)closeAddParcelModal()">
+<div class="modal" style="max-width:520px;max-height:85vh;">
+<button class="modal-close" onclick="closeAddParcelModal()">&times;</button>
+<h2>📦 Register New Parcel</h2>
+<div style="overflow-y:auto;max-height:65vh;padding-right:8px;">
+
+<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:14px 0 8px;">Tracking Information</div>
+<div class="form-group"><label>Tracking Number *</label><input type="text" id="apTracking" placeholder="Enter tracking number"></div>
+
+<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:14px 0 8px;">Receiver Information</div>
+<div class="form-group"><label>Receiver Name</label><input type="text" id="apReceiver" value="GOH PAU SAN"></div>
+<div class="form-group"><label>Phone Number</label><input type="text" id="apPhone" value="6738360189"></div>
+<div class="form-group"><label>For *</label>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apFor" value="San" checked style="accent-color:var(--accent);"> San</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apFor" value="Aisyah" style="accent-color:var(--accent);"> Aisyah</label>
+</div>
+</div>
+
+<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:14px 0 8px;">Item Information</div>
+<div class="form-group"><label>Category *</label>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;" id="apCategoryChips">
+<button type="button" class="cat-chip" data-cat="BEAUTY CARE PRODUCT" onclick="selectCat(this)">BEAUTY CARE PRODUCT</button><button type="button" class="cat-chip" data-cat="CAR BODY ACCESSORIES" onclick="selectCat(this)">CAR BODY ACCESSORIES</button><button type="button" class="cat-chip" data-cat="CAR PARTS" onclick="selectCat(this)">CAR PARTS</button><button type="button" class="cat-chip" data-cat="CLOTHING" onclick="selectCat(this)">CLOTHING</button><button type="button" class="cat-chip" data-cat="COMPUTER ACCESSORIES" onclick="selectCat(this)">COMPUTER ACCESSORIES</button><button type="button" class="cat-chip" data-cat="ELECTRICAL APPLIANCES" onclick="selectCat(this)">ELECTRICAL APPLIANCES</button><button type="button" class="cat-chip" data-cat="EYEWEAR" onclick="selectCat(this)">EYEWEAR</button><button type="button" class="cat-chip" data-cat="FASHION ACCESSORIES" onclick="selectCat(this)">FASHION ACCESSORIES</button><button type="button" class="cat-chip" data-cat="FISHING KITS" onclick="selectCat(this)">FISHING KITS</button><button type="button" class="cat-chip" data-cat="GARMENT" onclick="selectCat(this)">GARMENT</button><button type="button" class="cat-chip" data-cat="HEALTHCARE PRODUCT" onclick="selectCat(this)">HEALTHCARE PRODUCT</button><button type="button" class="cat-chip" data-cat="HOME FITTINGS" onclick="selectCat(this)">HOME FITTINGS</button><button type="button" class="cat-chip" data-cat="KITCHENWARE" onclick="selectCat(this)">KITCHENWARE</button><button type="button" class="cat-chip" data-cat="PERFUME" onclick="selectCat(this)">PERFUME</button><button type="button" class="cat-chip" data-cat="PHONE ACCESSORIES" onclick="selectCat(this)">PHONE ACCESSORIES</button><button type="button" class="cat-chip" data-cat="PRINTED MATERIAL" onclick="selectCat(this)">PRINTED MATERIAL</button><button type="button" class="cat-chip" data-cat="SPORT SHOES" onclick="selectCat(this)">SPORT SHOES</button><button type="button" class="cat-chip" data-cat="SPORTS EQUIPMENT" onclick="selectCat(this)">SPORTS EQUIPMENT</button><button type="button" class="cat-chip" data-cat="TOYS" onclick="selectCat(this)">TOYS</button><button type="button" class="cat-chip" data-cat="WATCHES" onclick="selectCat(this)">WATCHES</button><button type="button" class="cat-chip" data-cat="OTHERS" onclick="selectCat(this)">OTHERS</button>
+</div>
+<input type="hidden" id="apCategory" value="OTHERS">
+</div>
+<div class="form-group"><label>Item Description</label><textarea id="apItem" rows="2" placeholder="Describe your items (e.g., Shirt 2pcs RM10)" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.85rem;outline:none;resize:vertical;font-family:inherit;"></textarea></div>
+<div class="estimator-form" style="margin-bottom:0;">
+<div class="form-group"><label>Quantity</label><input type="number" id="apQty" value="1" min="1"></div>
+<div class="form-group"><label>Price (RM)</label><input type="number" id="apPrice" value="0" min="0" step="0.01"></div>
+</div>
+
+<div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:14px 0 8px;">Invoice &amp; Remark</div>
+<div class="form-group"><label>Remark</label><input type="text" id="apRemark" placeholder="Any notes..."></div>
+<div class="form-group"><label>Platform *</label>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="Shopee" checked style="accent-color:var(--accent);"> Shopee</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="Lazada" style="accent-color:var(--accent);"> Lazada</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="TikTok" style="accent-color:var(--accent);"> TikTok</label>
+</div>
+</div>
+<div class="form-group"><label>Status</label>
+<select id="apStatus" style="width:100%;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.85rem;outline:none;">
+<option value="Pending">Pending</option>
+<option value="Scheduled">Scheduled</option>
+<option value="Delivered">Delivered</option>
+<option value="Refunded">Refunded</option>
+<option value="Cancelled">Cancelled</option>
+<option value="Consolidated">Consolidated</option>
+</select>
+</div>
+
+</div>
+<div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:14px;">
+<button class="btn" onclick="closeAddParcelModal()">Cancel</button>
+<button class="btn btn-primary" onclick="submitAddParcel()">📦 Register Parcel</button>
+</div>
+</div>
 </div>
 
 <div class="modal-overlay" id="modal" onclick="if(event.target===this)closeModal()">
@@ -1604,23 +1689,48 @@ function deleteId(id) {
   showToast("Parcel #" + id + " deleted", "danger");
 }
 function addParcel() {
-  var platform = prompt("Platform (Lazada/Shopee/TikTok):", "Shopee");
-  if (!platform) return;
-  var tracking = prompt("Tracking number:");
-  if (!tracking) return;
-  var item = prompt("Item description:", "New Item");
-  var qty = parseInt(prompt("Quantity:", "1")) || 1;
-  var price = parseFloat(prompt("Price (RM):", "0")) || 0;
-  var status = prompt("Status (Pending/Scheduled/Delivered/Refunded/Cancelled/Consolidated):", "Pending");
-  var forWho = prompt("For (San/Aisyah):", "San");
+  document.getElementById("addParcelModal").classList.add("show");
+  // Reset form
+  document.getElementById("apTracking").value = "";
+  document.getElementById("apItem").value = "";
+  document.getElementById("apQty").value = "1";
+  document.getElementById("apPrice").value = "0";
+  document.getElementById("apRemark").value = "";
+  document.getElementById("apStatus").value = "Pending";
+  document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
+  document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "San";});
+  selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
+  document.getElementById("apTracking").focus();
+}
+function closeAddParcelModal() {
+  document.getElementById("addParcelModal").classList.remove("show");
+}
+function selectCat(btn) {
+  document.querySelectorAll('.cat-chip').forEach(function(c){c.classList.remove('active');});
+  btn.classList.add('active');
+  document.getElementById('apCategory').value = btn.dataset.cat;
+}
+function submitAddParcel() {
+  var tracking = document.getElementById("apTracking").value.trim();
+  if (!tracking) { showToast("Tracking number is required", "danger"); return; }
+  var platform = document.querySelector('input[name="apPlatform"]:checked').value;
+  var forWho = document.querySelector('input[name="apFor"]:checked').value;
+  var category = document.getElementById("apCategory").value;
+  var item = document.getElementById("apItem").value.trim() || "New Item";
+  var qty = parseInt(document.getElementById("apQty").value) || 1;
+  var price = parseFloat(document.getElementById("apPrice").value) || 0;
+  var status = document.getElementById("apStatus").value;
+  var remark = document.getElementById("apRemark").value.trim();
+  var receiver = document.getElementById("apReceiver").value.trim() || "GOH PAU SAN";
   var newId = parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id;})) + 1 : 1;
   parcels.push({
-    id: newId, platform: platform, tracking: tracking, receiver: "GOH PAU SAN",
-    category: "Others", item: item || "New Item", qty: qty, price: price,
-    pickupCode: "", nujCost: 0, status: status || "Pending", remark: "", for: forWho || "San"
+    id: newId, platform: platform, tracking: tracking, receiver: receiver,
+    category: category, item: item, qty: qty, price: price,
+    pickupCode: "", nujCost: 0, status: status, remark: remark, for: forWho
   });
   saveData(); renderAll();
-  showToast("📦 Parcel #" + newId + " added! +10 XP", "xp");
+  closeAddParcelModal();
+  showToast("📦 Parcel #" + newId + " registered! +10 XP", "xp");
 }
 
 // ===================== SETTINGS =====================
