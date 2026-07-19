@@ -2164,14 +2164,12 @@ function findDuplicates() {
       trackingMap[key] = p;
     }
   });
-
   var container = document.getElementById("duplicateCheckerContent");
   if (duplicates.length === 0) {
     container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div>No duplicates found! All tracking numbers are unique.</div></div>';
     showToast("✅ No duplicate tracking numbers found", "success");
     return;
   }
-
   var html = '<div style="font-size:0.85rem;margin-bottom:8px;"><strong>' + duplicates.length + ' duplicate tracking number(s) found:</strong></div>';
   html += '<div style="max-height:300px;overflow-y:auto;">';
   duplicates.forEach(function(dup, idx) {
@@ -2195,25 +2193,20 @@ function removeDuplicatePrompt() {
   var tracking = prompt("Enter the tracking number of the duplicate parcel to remove:");
   if (!tracking || !tracking.trim()) return;
   tracking = tracking.trim();
-
   var matches = parcels.filter(function(p){return p.tracking === tracking;});
   if (matches.length === 0) { showToast("❌ No parcel found with that tracking number", "danger"); return; }
   if (matches.length === 1) { showToast("ℹ️ Only one parcel found with that tracking number (not a duplicate)", "info"); return; }
-
-  var msg = "Found " + matches.length + " parcels with tracking "" + tracking + "":\n";
+  var msg = "Found " + matches.length + " parcels with tracking '" + tracking + "':";
   matches.forEach(function(p) {
-    msg += "\n#" + p.id + " — " + p.platform + " — " + p.status + " — " + p.item.substring(0,30);
+    msg += " | #" + p.id + " " + p.platform + " " + p.status;
   });
-  msg += "\n\nEnter the Parcel # to DELETE (or Cancel to keep all):";
-
+  msg += " | Enter the Parcel # to DELETE (or Cancel to keep all):";
   var idToDelete = prompt(msg);
   if (!idToDelete || !idToDelete.trim()) return;
   var deleteId = parseInt(idToDelete.trim());
   if (isNaN(deleteId)) { showToast("❌ Invalid parcel number", "danger"); return; }
-
   var idx = parcels.findIndex(function(p){return p.id === deleteId && p.tracking === tracking;});
   if (idx < 0) { showToast("❌ Parcel #" + deleteId + " not found with that tracking number", "danger"); return; }
-
   if (confirm("Are you sure you want to delete Parcel #" + deleteId + "?")) {
     parcels.splice(idx, 1);
     saveData(); renderAll();
