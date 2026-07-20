@@ -506,7 +506,11 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="section" id="section-prices">
 <div class="page-header">
 <div><div class="page-title">💰 Price Tracker</div><div class="page-subtitle">Monitor price changes across platforms</div></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;">
 <button class="btn btn-primary" onclick="addPriceEntry()">➕ Add Price Entry</button>
+<button class="btn btn-success" onclick="extractPricesFromParcels()">📦 Extract from Parcels</button>
+<button class="btn btn-info" onclick="showPriceMatches()">🔍 Find Matches</button>
+</div>
 </div>
 
 <div class="card">
@@ -1386,6 +1390,184 @@ function addPriceEntry() {
   saveData();
   renderPriceTracker();
   showToast("💰 Price entry added!", "success");
+}
+
+// ===================== PRICE EXTRACTION FROM PARCELS =====================
+function extractPricesFromParcels() {
+  var extracted = 0;
+  var seenKeys = {};
+
+  // Build existing price keys to avoid duplicates
+  priceHistory.forEach(function(ph) {
+    var key = (ph.item || "").toLowerCase().trim() + "|" + (ph.platform || "") + "|" + ph.price;
+    seenKeys[key] = true;
+  });
+
+  parcels.forEach(function(p) {
+    if (!p.item || p.price <= 0) return;
+
+    // Extract unit price from item description
+    var unitPrice = extractUnitPrice(p.item, p.price, p.qty);
+    if (!unitPrice || unitPrice <= 0) return;
+
+    // Normalize item name (remove quantities, prices, variant details)
+    var itemName = normalizeItemName(p.item);
+    if (!itemName) return;
+
+    var key = itemName.toLowerCase() + "|" + p.platform + "|" + unitPrice;
+    if (seenKeys[key]) return;
+
+    // Try to extract date from remark or use a default
+    var date = extractDateFromRemark(p.remark) || extractDateFromTracking(p.tracking) || "2026-01-01";
+
+    priceHistory.push({
+      item: itemName,
+      platform: p.platform,
+      price: unitPrice,
+      date: date,
+      notes: "Auto-extracted from parcel #" + p.id + " (qty " + p.qty + ", total RM" + p.price.toFixed(2) + ")"
+    });
+    seenKeys[key] = true;
+    extracted++;
+  });
+
+  if (extracted > 0) {
+    saveData();
+    renderPriceTracker();
+    showToast("💰 Extracted " + extracted + " price entries from parcels!", "success");
+  } else {
+    showToast("ℹ️ No new price entries found in parcels", "info");
+  }
+  return extracted;
+}
+
+function extractUnitPrice(itemDesc, totalPrice, qty) {
+  if (!itemDesc || qty <= 0 || totalPrice <= 0) return 0;
+
+  // Try to find explicit per-unit prices in the description
+  // Patterns: "RM15.00 each", "@RM15", "RM15/pc", "15.00 x 5", etc.
+  var patterns = [
+    /RM?\s*(\d+\.?\d*)\s*(?:each|ea|pc|pcs|piece|unit|set)/i,
+    /@\s*RM?\s*(\d+\.?\d*)/i,
+    /RM?\s*(\d+\.?\d*)\s*(?:x|\*)/i,
+    /(?:price|cost)\s*[:]?\s*RM?\s*(\d+\.?\d*)/i,
+  ];
+
+  for (var i = 0; i < patterns.length; i++) {
+    var match = itemDesc.match(patterns[i]);
+    if (match) {
+      var price = parseFloat(match[1]);
+      if (price > 0 && price <= totalPrice * 2) { // Sanity check
+        return Math.round(price * 100) / 100;
+      }
+    }
+  }
+
+  // Fallback: divide total by quantity for a per-unit estimate
+  var unitPrice = totalPrice / qty;
+  return Math.round(unitPrice * 100) / 100;
+}
+
+function normalizeItemName(itemDesc) {
+  if (!itemDesc) return "";
+
+  // Remove quantity patterns
+  var cleaned = itemDesc
+    .replace(/\d+\s*(pcs?|pieces?|units?|sets?|boxes?|packs?|sachets?|bottles?|pcs)\s*/gi, " ")
+    .replace(/\d+\s*x\s*\d+/gi, " ")  // "5 x 10" patterns
+    .replace(/RM?\s*\d+\.?\d*\s*(each|ea|pc|set)?/gi, " ")
+    .replace(/@\s*RM?\s*\d+\.?\d*/gi, " ")
+    .replace(/total\s*RM?\s*\d+\.?\d*/gi, " ")
+    .replace(/subtotal\s*RM?\s*\d+\.?\d*/gi, " ")
+    .replace(/\d+\s*(g|ml|mg|kg|oz|lb)/gi, " ")  // Remove weight/volume
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Limit length
+  if (cleaned.length > 80) cleaned = cleaned.substring(0, 80) + "...";
+
+  return cleaned || itemDesc.substring(0, 60);
+}
+
+function extractDateFromRemark(remark) {
+  if (!remark) return null;
+  // Look for dates in format DD-MM-YYYY or YYYY-MM-DD in remark
+  var match = remark.match(/(\d{4}-\d{2}-\d{2})/);
+  if (match) return match[1];
+  match = remark.match(/(\d{2})[-/](\d{2})[-/](\d{4})/);
+  if (match) return match[3] + "-" + match[2] + "-" + match[1];
+  return null;
+}
+
+function extractDateFromTracking(tracking) {
+  // Some tracking numbers encode dates, but mostly return null
+  // This is a placeholder for future smart extraction
+  return null;
+}
+
+function showPriceMatches() {
+  var matches = findPriceMatches();
+  var container = document.getElementById("priceTrackerContent");
+  if (!container) return;
+
+  if (matches.length === 0) {
+    showToast("ℹ️ No multi-order items found for price comparison", "info");
+    return;
+  }
+
+  var html = '<div style="margin-bottom:16px;"><strong>🔍 Items with multiple orders (potential price tracking candidates):</strong></div>';
+  html += '<div style="max-height:300px;overflow-y:auto;">';
+  matches.forEach(function(m) {
+    html += '<div style="padding:10px;margin-bottom:8px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);">';
+    html += '<div style="font-weight:700;font-size:0.9rem;">' + m.name + '</div>';
+    html += '<div style="font-size:0.78rem;color:var(--text-secondary);margin-top:3px;">';
+    html += m.count + ' orders across ' + m.platforms + ' | Per-unit: ' + m.priceRange;
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += '<div style="margin-top:10px;font-size:0.78rem;color:var(--text-secondary);">💡 Click "📦 Extract from Parcels" to auto-add these to price history</div>';
+
+  container.innerHTML = html;
+  showToast("🔍 Found " + matches.length + " items with multiple orders", "success");
+}
+
+function findPriceMatches() {
+  // Find parcels that have the same item across different platforms/dates
+  // and suggest adding them to price history
+  var itemGroups = {};
+  parcels.forEach(function(p) {
+    if (!p.item || p.price <= 0) return;
+    var name = normalizeItemName(p.item).toLowerCase();
+    if (!name) return;
+    if (!itemGroups[name]) itemGroups[name] = [];
+    itemGroups[name].push(p);
+  });
+
+  var matches = [];
+  for (var name in itemGroups) {
+    if (itemGroups[name].length >= 2) {
+      var platforms = {};
+      itemGroups[name].forEach(function(p) { platforms[p.platform] = true; });
+      if (Object.keys(platforms).length >= 1) {
+        matches.push({
+          name: itemGroups[name][0].item.substring(0, 50),
+          count: itemGroups[name].length,
+          platforms: Object.keys(platforms).join(", "),
+          priceRange: getPriceRange(itemGroups[name])
+        });
+      }
+    }
+  }
+  return matches.sort(function(a,b){return b.count - a.count;}).slice(0, 10);
+}
+
+function getPriceRange(group) {
+  var prices = group.map(function(p){return p.price / p.qty;}).filter(function(p){return p > 0;});
+  if (prices.length === 0) return "N/A";
+  var min = Math.min.apply(null, prices);
+  var max = Math.max.apply(null, prices);
+  if (min === max) return "RM " + min.toFixed(2);
+  return "RM " + min.toFixed(2) + " - " + max.toFixed(2);
 }
 
 // ===================== NUJ ESTIMATOR =====================
