@@ -1042,6 +1042,22 @@ function exportPriceCSV() {
   showToast("💾 Price history exported!", "success");
 }
 
+function dedupParcelIds() {
+  var seenIds = {};
+  var hasDups = false;
+  for (var i = 0; i < parcels.length; i++) {
+    if (seenIds[parcels[i].id]) { hasDups = true; break; }
+    seenIds[parcels[i].id] = true;
+  }
+  if (hasDups) {
+    for (var i = 0; i < parcels.length; i++) {
+      parcels[i].id = i + 1;
+    }
+    return true;
+  }
+  return false;
+}
+
 function saveData() {
   try { localStorage.setItem("parcelQuest_data", JSON.stringify(parcels)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_prices", JSON.stringify(priceHistory)); } catch(e) {}
@@ -1055,16 +1071,7 @@ function loadData() {
     if (saved) {
       parcels = JSON.parse(saved);
       // Fix duplicate IDs from old data (reassign sequential IDs)
-      var seenIds = {};
-      var hasDups = false;
-      for (var i = 0; i < parcels.length; i++) {
-        if (seenIds[parcels[i].id]) { hasDups = true; break; }
-        seenIds[parcels[i].id] = true;
-      }
-      if (hasDups) {
-        for (var i = 0; i < parcels.length; i++) {
-          parcels[i].id = i + 1;
-        }
+      if (dedupParcelIds()) {
         saveData();
         showToast("🔧 Fixed duplicate IDs in saved data", "success");
       }
@@ -1943,6 +1950,10 @@ function importJSON() {
     if (data.parcels && Array.isArray(data.parcels)) {
       if (confirm("Import " + data.parcels.length + " parcels? This will REPLACE current data.")) {
         parcels = data.parcels;
+        // Fix any duplicate IDs from imported JSON
+        if (dedupParcelIds()) {
+          showToast("🔧 Fixed duplicate IDs in imported JSON", "success");
+        }
         if (data.priceHistory) priceHistory = data.priceHistory;
         if (data.player) player = data.player;
         saveData();
@@ -2051,6 +2062,10 @@ function downloadFromGist() {
       if (data.parcels && Array.isArray(data.parcels)) {
         if (confirm("Download " + data.parcels.length + " parcels from Gist? This will REPLACE local data.")) {
           parcels = data.parcels;
+          // Fix any duplicate IDs that may exist in Gist data
+          if (dedupParcelIds()) {
+            showToast("🔧 Fixed duplicate IDs from Gist", "success");
+          }
           if (data.priceHistory) priceHistory = data.priceHistory;
           if (data.player) player = data.player;
           saveData();
@@ -2137,6 +2152,11 @@ function mergeFromGist() {
         player = data.player;
       }
 
+      // Fix any duplicate IDs after merge
+      if (dedupParcelIds()) {
+        showToast("🔧 Fixed duplicate IDs after Gist merge", "success");
+      }
+
       saveData();
       renderAll();
       showToast("🔀 Merged! Added " + added + " new parcels, updated " + updated + " statuses. Total: " + parcels.length, "success");
@@ -2165,6 +2185,10 @@ function autoSyncFromGist() {
         var data = JSON.parse(file.content);
         if (data.parcels && Array.isArray(data.parcels)) {
           parcels = data.parcels;
+          // Fix any duplicate IDs from Gist auto-sync
+          if (dedupParcelIds()) {
+            showToast("🔧 Fixed duplicate IDs from Gist auto-sync", "success");
+          }
           if (data.priceHistory) priceHistory = data.priceHistory;
           if (data.player) player = data.player;
           saveData();
