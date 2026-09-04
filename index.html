@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#7c5cff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Parcel Quest">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Parcel Quest — Gamified Parcel Tracker</title>
 <style>
 :root {
@@ -354,6 +360,8 @@ body.light-mode ::-webkit-scrollbar-thumb {
   color: white;
   box-shadow: 0 0 12px var(--accent-glow);
 }
+
+.factory-head{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}.factory-coins{font-size:1.35rem;font-weight:800;color:var(--warning)}.factory-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.factory-stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px}.factory-stat b{display:block;font-size:1.15rem;margin-top:3px}.factory-progress{height:10px;background:var(--surface-strong);border-radius:5px;overflow:hidden;margin-top:8px}.factory-progress>div{height:100%;background:linear-gradient(90deg,var(--accent),var(--level));transition:width .3s}.factory-actions{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-top:12px}.factory-worker{display:flex;justify-content:space-between;align-items:center;padding:9px 10px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-top:7px}.factory-log{max-height:90px;overflow:auto;font-size:.72rem;color:var(--text-secondary);margin-top:10px}
 </style>
 </head>
 <body>
@@ -375,7 +383,7 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div class="sidebar-footer">
 <div id="sidebarLevel">Lv. 1 Parcel Novice</div>
 <div id="saveIndicator" style="margin-top:4px;font-size:0.65rem;color:var(--text-muted);">💾 autosaved</div>
-<div style="margin-top:2px;">v2.7</div>
+<div style="margin-top:2px;">v3.0</div>
 </div>
 </aside>
 <main class="main" id="main">
@@ -390,6 +398,7 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <button class="btn" onclick="exportCSV()">💾 Export CSV</button>
 <button class="btn btn-info" onclick="exportJSON()">📋 Copy JSON</button>
 <button class="btn btn-success" onclick="importJSON()">📋 Paste JSON</button>
+<button class="btn" id="installPwaBtn" onclick="installPWA()" style="display:none;">📲 Install App</button>
 </div>
 </div>
 
@@ -455,7 +464,7 @@ body.light-mode ::-webkit-scrollbar-thumb {
 </div>
 <div style="overflow-x:auto;">
 <table>
-<thead><tr><th class="col-id">#</th><th class="col-platform">Platform</th><th>Tracking</th><th>Item</th><th class="col-qty">Qty</th><th class="col-price">Price</th><th class="col-status">Status</th><th>For</th><th class="col-actions">Actions</th></tr></thead>
+<thead><tr><th class="col-id">#</th><th class="col-platform">Platform</th><th>Courier</th><th>Tracking</th><th>Item</th><th class="col-qty">Qty</th><th class="col-price">Price</th><th class="col-status">Status</th><th>For</th><th class="col-actions">Actions</th></tr></thead>
 <tbody id="parcelTable"></tbody>
 </table>
 </div>
@@ -561,10 +570,10 @@ body.light-mode ::-webkit-scrollbar-thumb {
 
 <div class="quest-grid">
 <div class="quest-card" id="questSorter" onclick="startSortGame()">
-<div class="quest-icon">📦</div>
-<div class="quest-title">Parcel Sorter</div>
-<div class="quest-desc">Sort parcels into the correct status bins as fast as you can!</div>
-<div class="quest-reward">🏆 Reward: +50 XP</div>
+<div class="quest-icon">🏭</div>
+<div class="quest-title">Parcel Factory</div>
+<div class="quest-desc">Build an idle parcel-sorting line. Recruit workers, improve sorters, upgrade the conveyor, and let the factory keep working.</div>
+<div class="quest-reward">🏆 Idle rewards + XP • Offline progress</div>
 <div class="game-area" id="sortGameArea" style="display:none;" onclick="event.stopPropagation()"></div>
 </div>
 
@@ -689,7 +698,7 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <button class="btn btn-info" onclick="mergeFromGist()">🔀 Merge</button>
 </div>
 <div class="settings-row">
-<div><div class="settings-label">Auto-sync on load</div><div class="settings-desc">Automatically download from Gist when app opens</div></div>
+<div><div class="settings-label">Auto-sync with Gist</div><div class="settings-desc">Safely reconcile local data with Gist on startup and after changes; newer data wins instead of blindly overwriting local data.</div></div>
 <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
 <input type="checkbox" id="autoSync" onchange="saveAutoSync()" style="accent-color:var(--accent);width:18px;height:18px;">
 <span style="font-size:0.85rem;">Enable</span>
@@ -718,7 +727,8 @@ body.light-mode ::-webkit-scrollbar-thumb {
 <div style="overflow-y:auto;max-height:65vh;padding-right:8px;">
 
 <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:14px 0 8px;">Tracking Information</div>
-<div class="form-group"><label>Tracking Number *</label><input type="text" id="apTracking" placeholder="Enter tracking number"></div>
+<div class="form-group"><label>Tracking Number *</label><input type="text" id="apTracking" placeholder="Enter tracking number" oninput="updateDetectedCourier()"></div>
+<div class="form-group"><label>Courier</label><select id="apCourier"><option value="">Auto-detect</option><option value="J&T Express">J&T Express</option><option value="SPX Express">SPX Express</option><option value="Ninja Van">Ninja Van</option><option value="Other">Other</option></select><div id="courierHint" style="font-size:0.7rem;color:var(--text-muted);margin-top:4px;"></div></div>
 
 <div style="font-size:0.7rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;font-weight:700;margin:14px 0 8px;">Receiver Information</div>
 <div class="form-group"><label>Receiver Name</label><input type="text" id="apReceiver" value="GOH PAU SAN"></div>
@@ -4020,7 +4030,7 @@ let currentPickupFilter = 'all';
 let currentPage = 1;
 let perPage = 20;
 let currentModalId = null;
-let player = { level: 1, xp: 0, totalXP: 0, gameXP: 0 };
+let player = { level: 1, xp: 0, totalXP: 0, gameXP: 0, factory: null };
 let activeGame = null;
 
 const LEVEL_TITLES = [
@@ -4065,7 +4075,7 @@ const STATUS_COLORS = {
   "Delivered": "status-delivered", "Pending": "status-pending", "Scheduled": "status-scheduled",
   "Cancelled": "status-cancelled", "Refunded": "status-refunded", "Consolidated": "status-consolidated"
 };
-const PLATFORM_COLORS = { "Lazada": "#818cf8", "Shopee": "#fb923c", "TikTok": "#f472b6" };
+const PLATFORM_COLORS = { "Lazada": "#818cf8", "Shopee": "#fb923c", "TikTok": "#f472b6", "J&T Express": "#ef4444", "SPX Express": "#f59e0b", "Ninja Van": "#22c55e" };
 const CATEGORY_COLORS = {
   "Health Care": "#ef4444", "Beauty Care": "#ec4899", "Elec. Appl.": "#3b82f6",
   "Fashion Acc": "#8b5cf6", "Others": "#6b7280", "Kitchen": "#f59e0b",
@@ -4277,38 +4287,25 @@ function dedupParcelIds() {
   return false;
 }
 
-function saveData() {
-  try { localStorage.setItem("parcelQuest_data", JSON.stringify(parcels)); } catch(e) {}
-  try { localStorage.setItem("parcelQuest_prices", JSON.stringify(priceHistory)); } catch(e) {}
-  try { localStorage.setItem("parcelQuest_player", JSON.stringify(player)); } catch(e) {}
-  lastSaveTime = Date.now();
-  updateSaveIndicator();
+function saveData(options) {
+  options=options||{};
+  var now=Date.now();
+  try { localStorage.setItem('parcelQuest_data', JSON.stringify(parcels)); localStorage.setItem('parcelQuest_prices', JSON.stringify(priceHistory)); localStorage.setItem('parcelQuest_player', JSON.stringify(player)); localStorage.setItem('parcelQuest_localUpdatedAt', String(now)); } catch(e) { console.error('Local save failed',e); }
+  lastSaveTime=now; updateSaveIndicator();
+  if(!options.skipGist && isAutoGistEnabled()) scheduleGistSave();
 }
 function loadData() {
-  try {
-    var saved = localStorage.getItem("parcelQuest_data");
-    if (saved) {
-      var parsed = JSON.parse(saved);
-      // Guard against empty arrays or corrupted data
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        parcels = parsed;
-        // Fix duplicate IDs from old data (reassign sequential IDs)
-        if (dedupParcelIds()) {
-          saveData();
-          showToast("🔧 Fixed duplicate IDs in saved data", "success");
-        }
-      } else {
-        parcels = JSON.parse(JSON.stringify(INITIAL_PARCELS));
-      }
-    }
-    else { parcels = JSON.parse(JSON.stringify(INITIAL_PARCELS)); }
-  } catch(e) { parcels = JSON.parse(JSON.stringify(INITIAL_PARCELS)); }
-  try { var sp = localStorage.getItem("parcelQuest_prices"); if (sp) { var pp = JSON.parse(sp); if (Array.isArray(pp)) priceHistory = pp; } } catch(e) {}
-  try { var spl = localStorage.getItem("parcelQuest_player"); if (spl) { var pl = JSON.parse(spl); if (pl && typeof pl === "object") player = pl; } } catch(e) {}
+  var hadLocal=false;
+  try { var saved=localStorage.getItem('parcelQuest_data'); if(saved){ var parsed=JSON.parse(saved); if(Array.isArray(parsed) && parsed.length>0){ parcels=parsed; hadLocal=true; if(dedupParcelIds()){} } else { parcels=JSON.parse(JSON.stringify(INITIAL_PARCELS)); } } else parcels=JSON.parse(JSON.stringify(INITIAL_PARCELS)); } catch(e){ parcels=JSON.parse(JSON.stringify(INITIAL_PARCELS)); }
+  try { var sp=localStorage.getItem('parcelQuest_prices'); if(sp){var pp=JSON.parse(sp);if(Array.isArray(pp))priceHistory=pp;} }catch(e){}
+  try { var spl=localStorage.getItem('parcelQuest_player'); if(spl){var pl=JSON.parse(spl);if(pl&&typeof pl==='object')player=pl;} }catch(e){}
+  if(!player.factory) player.factory=null;
+  try { if(!localStorage.getItem('parcelQuest_localUpdatedAt')) localStorage.setItem('parcelQuest_localUpdatedAt', String(hadLocal?Date.now():0)); } catch(e){}
 }
+
 function clearAll() {
   if (!confirm("Clear ALL parcels? This cannot be undone.")) return;
-  parcels = []; priceHistory = []; player = { level: 1, xp: 0, totalXP: 0, gameXP: 0 };
+  parcels = []; priceHistory = []; player = { level: 1, xp: 0, totalXP: 0, gameXP: 0, factory: null };
   saveData(); renderAll();
   showToast("🗑️ All data cleared", "danger");
 }
@@ -4321,7 +4318,7 @@ function resetToDefault() {
     showToast("🔧 Fixed duplicate IDs in default data", "success");
   }
   priceHistory = [];
-  player = { level: 1, xp: 0, totalXP: 0, gameXP: 0 };
+  player = { level: 1, xp: 0, totalXP: 0, gameXP: 0, factory: null };
   saveData();
   renderAll();
   showToast("🔄 Reset to default 214 parcels!", "success");
@@ -4406,6 +4403,32 @@ function getFiltered() {
     return true;
   });
 }
+function detectCourier(tracking, platform, explicitCourier) {
+  if (explicitCourier) return explicitCourier;
+  var t = String(tracking || '').toUpperCase().replace(/\s+/g,'');
+  if (/^SPX/.test(t) || /^SPXMY/.test(t)) return 'SPX Express';
+  if (/^NV/.test(t) || /^NINJA/.test(t) || /^NL/.test(t)) return 'Ninja Van';
+  if (/^JT/.test(t) || /^JNT/.test(t)) return 'J&T Express';
+  if (/^MY\d/.test(t) && platform === 'Shopee') return 'SPX Express';
+  if (/^\d{10,16}$/.test(t)) return 'J&T Express';
+  return 'Other';
+}
+function courierTrackUrl(courier, tracking) {
+  var t = encodeURIComponent(String(tracking || '').trim());
+  if (!t) return '';
+  if (courier === 'J&T Express') return 'https://www.jtexpress.my/tracking/';
+  if (courier === 'SPX Express') return 'https://spxexpress.com.my/';
+  if (courier === 'Ninja Van') return 'https://www.ninjavan.co/en-my/tracking?id=' + t;
+  return '';
+}
+function updateDetectedCourier() {
+  var input=document.getElementById('apTracking'), sel=document.getElementById('apCourier'), hint=document.getElementById('courierHint');
+  if (!input || !sel) return;
+  var detected=detectCourier(input.value, '', '');
+  if (sel.value === '' || sel.dataset.auto === '1') { sel.value = detected === 'Other' ? '' : detected; sel.dataset.auto='1'; }
+  if (hint) hint.textContent = detected !== 'Other' && input.value ? 'Detected: ' + detected : 'Choose a courier if it cannot be detected automatically.';
+}
+
 function renderParcels() {
   updateLevel();
   var counts = {
@@ -4453,14 +4476,14 @@ function renderParcels() {
   var tbody = document.getElementById("parcelTable");
   if (!tbody) return;
   if (pageItems.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">📭</div><div>No parcels found.</div></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="empty-state-icon">📭</div><div>No parcels found.</div></div></td></tr>';
     return;
   }
   tbody.innerHTML = pageItems.map(function(p) {
     var statusClass = STATUS_COLORS[p.status] || "status-pending";
     var platformColor = PLATFORM_COLORS[p.platform] || "#888";
     var itemEsc = p.item.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return '<tr onclick="openModal(' + p.id + ')"><td class="col-id" style="color:var(--text-muted);font-weight:700;">' + p.id + '</td><td class="col-platform"><span class="platform-tag" style="color:' + platformColor + '">' + p.platform + '</span></td><td><span class="tracking-num">' + p.tracking + '</span></td><td><div class="item-desc" title="' + itemEsc + '">' + p.item + '</div></td><td class="col-qty">' + p.qty + '</td><td class="col-price">' + p.price.toFixed(2) + '</td><td class="col-status"><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td>' + p.for + '</td><td class="col-actions"><button class="btn" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();cycleStatusId(' + p.id + ')">🔄</button><button class="btn btn-danger" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();deleteId(' + p.id + ')">🗑️</button></td></tr>';
+    return '<tr onclick="openModal(' + p.id + ')"><td class="col-id" style="color:var(--text-muted);font-weight:700;">' + p.id + '</td><td class="col-platform"><span class="platform-tag" style="color:' + platformColor + '">' + p.platform + '</span></td><td><span class="platform-tag">' + detectCourier(p.tracking,p.platform,p.courier) + '</span></td><td>' + (courierTrackUrl(detectCourier(p.tracking,p.platform,p.courier),p.tracking) ? '<a href="' + courierTrackUrl(detectCourier(p.tracking,p.platform,p.courier),p.tracking) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()"><span class="tracking-num">' + p.tracking + '</span></a>' : '<span class="tracking-num">' + p.tracking + '</span>') + '</td><td><div class="item-desc" title="' + itemEsc + '">' + p.item + '</div></td><td class="col-qty">' + p.qty + '</td><td class="col-price">' + p.price.toFixed(2) + '</td><td class="col-status"><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td>' + p.for + '</td><td class="col-actions"><button class="btn" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();cycleStatusId(' + p.id + ')">🔄</button><button class="btn btn-danger" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();deleteId(' + p.id + ')">🗑️</button></td></tr>';
   }).join("");
 }
 function updateSelect(id, items, defaultLabel) {
@@ -4590,7 +4613,7 @@ function renderPriceTracker() {
   var crossHtml = '';
   var itemPlatforms = {};
   parcels.forEach(function(p) {
-    var key = p.item.toLowerCase().substring(0, 30);
+    var key = normalizeItemName(p.item).toLowerCase();
     if (!itemPlatforms[key]) itemPlatforms[key] = {};
     if (!itemPlatforms[key][p.platform]) itemPlatforms[key][p.platform] = p;
   });
@@ -4704,22 +4727,22 @@ function extractUnitPrice(itemDesc, totalPrice, qty) {
 }
 
 function normalizeItemName(itemDesc) {
-  if (!itemDesc) return "";
-
-  // Remove quantity patterns
-  var cleaned = itemDesc
-    .replace(/\d+\s*(pcs?|pieces?|units?|sets?|boxes?|packs?|sachets?|bottles?|pcs)\s*/gi, " ")
-    .replace(/\d+\s*x\s*\d+/gi, " ")
-    .replace(/RM?\s*\d+\.?\d*\s*(each|ea|pc|set)?/gi, " ")
-    .replace(/@\s*RM?\s*\d+\.?\d*/gi, " ")
-    .replace(/total\s*RM?\s*\d+\.?\d*/gi, " ")
-    .replace(/subtotal\s*RM?\s*\d+\.?\d*/gi, " ")
-    .replace(/\d+\s*(g|ml|mg|kg|oz|lb)\b/gi, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  if (cleaned.length > 80) cleaned = cleaned.substring(0, 80) + "...";
-  return cleaned || itemDesc.substring(0, 60);
+  if (!itemDesc) return '';
+  var text = String(itemDesc).replace(/<[^>]+>/g,' ');
+  // Search terms should be broad: prefer BRAND + PRODUCT TYPE, not a full listing title.
+  text = text.replace(/\b(RM|MYR)\s*\d+(?:\.\d+)?\b/gi,' ');
+  text = text.replace(/\b\d+(?:\.\d+)?\s*(?:pcs?|pieces?|units?|sets?|boxes?|packs?|sachets?|bottles?)\b/gi,' ');
+  text = text.replace(/\b\d+(?:\.\d+)?\s*(?:g|kg|mg|ml|l|oz|lb)\b/gi,' ');
+  text = text.replace(/\b(?:buy|free|percuma|combo|pakej|package|bundle|total|subtotal|each|ori|original|live|exclusive|promo|sale|clearance|b1t1|b1f1|new|launch|limited|edition)\b/gi,' ');
+  text = text.replace(/[\[\](){},+/@:*|]/g,' ');
+  var words = text.split(/\s+/).filter(function(w){ return w.length >= 2 && !/^\d+$/.test(w); });
+  // Keep first brand-like token plus the most useful product-type token.
+  var productTypes=['soap','shampoo','conditioner','serum','cream','toner','mask','moisturizer','sunscreen','lip','balm','gloss','powder','supplement','charger','powerbank','bedsheet','battery','cable','camera','scale'];
+  var brand = words.length ? words[0] : '';
+  var type = '';
+  for(var i=0;i<words.length;i++){ if(productTypes.indexOf(words[i].toLowerCase())>=0){ type=words[i]; break; } }
+  if(type && brand.toLowerCase()!==type.toLowerCase()) return brand + ' + ' + type;
+  return brand || text.trim().substring(0,40);
 }
 
 function extractKeywords(itemDesc) {
@@ -4980,95 +5003,53 @@ function renderNUJHistory() {
 }
 
 // ===================== SIDE QUESTS =====================
-function startSortGame() {
-  if (activeGame) return;
-  activeGame = 'sort';
-  document.getElementById('questSorter').classList.add('playing');
-  var area = document.getElementById('sortGameArea');
-  area.style.display = 'block';
-
-  var statuses = ['Pending', 'Delivered', 'Scheduled'];
-  var parcelsToSort = [];
-  for (var i = 0; i < 8; i++) {
-    var st = statuses[Math.floor(Math.random() * statuses.length)];
-    parcelsToSort.push({id: i, name: 'Parcel #' + (i+1), status: st});
+function getFactory() {
+  if (!player.factory || typeof player.factory !== 'object') {
+    player.factory = { coins:0, sorted:0, workers:1, workerLevel:1, conveyor:1, scanner:1, lastTick:Date.now(), log:[] };
   }
-
-  var score = 0;
-  var total = parcelsToSort.length;
-  area.innerHTML = '<div style="text-align:center;margin-bottom:10px;"><strong>Sort the parcels!</strong> Drag or click to move.</div>' +
-    '<div class="sort-game"><div class="sort-belt" id="sortBelt">' + parcelsToSort.map(function(p) {
-      return '<div class="sort-parcel" data-status="' + p.status + '" id="sort-' + p.id + '" draggable="true" onclick="moveParcel(this)">' + p.name + '</div>';
-    }).join('') + '</div>' +
-    '<div style="display:flex;gap:10px;">' +
-    '<div class="sort-bin" data-target="Pending"><div class="sort-bin-label">⏳ Pending</div><div class="bin-contents" id="bin-Pending"></div></div>' +
-    '<div class="sort-bin" data-target="Delivered"><div class="sort-bin-label">✅ Delivered</div><div class="bin-contents" id="bin-Delivered"></div></div>' +
-    '<div class="sort-bin" data-target="Scheduled"><div class="sort-bin-label">📅 Scheduled</div><div class="bin-contents" id="bin-Scheduled"></div></div>' +
-    '</div>' +
-    '<div style="text-align:center;margin-top:10px;font-size:1.2rem;font-weight:800;" id="sortScore">Score: 0 / ' + total + '</div>' +
-    '<div style="text-align:center;"><button class="btn btn-danger" onclick="stopSortGame()">Stop Game</button></div></div>';
-
-  // Drag and drop
-  var dragged = null;
-  area.querySelectorAll('.sort-parcel').forEach(function(el) {
-    el.addEventListener('dragstart', function(e) { dragged = el; });
-  });
-  area.querySelectorAll('.sort-bin').forEach(function(bin) {
-    bin.addEventListener('dragover', function(e) { e.preventDefault(); });
-    bin.addEventListener('drop', function(e) {
-      e.preventDefault();
-      if (dragged) {
-        var target = bin.dataset.target;
-        var correct = dragged.dataset.status === target;
-        if (correct) {
-          bin.querySelector('.bin-contents').appendChild(dragged);
-          dragged.style.pointerEvents = 'none';
-          dragged.style.opacity = '0.6';
-          score++;
-          document.getElementById('sortScore').textContent = 'Score: ' + score + ' / ' + total;
-          if (score === total) {
-            player.gameXP += 50;
-            saveData(); updateLevel();
-            showToast('🎉 Parcel Sorter complete! +50 XP', 'xp');
-            setTimeout(stopSortGame, 1500);
-          }
-        } else {
-          bin.classList.add('wrong');
-          setTimeout(function(){bin.classList.remove('wrong');}, 500);
-        }
-        dragged = null;
-      }
-    });
-  });
+  var f=player.factory;
+  f.coins=Number(f.coins)||0; f.sorted=Number(f.sorted)||0; f.workers=Math.max(1,Number(f.workers)||1); f.workerLevel=Math.max(1,Number(f.workerLevel)||1); f.conveyor=Math.max(1,Number(f.conveyor)||1); f.scanner=Math.max(1,Number(f.scanner)||1); f.lastTick=Number(f.lastTick)||Date.now(); f.log=Array.isArray(f.log)?f.log:[];
+  return f;
 }
-function moveParcel(el) {
-  if (!activeGame || activeGame !== 'sort') return;
-  var status = el.dataset.status;
-  var bin = document.getElementById('bin-' + status);
-  if (bin && bin.querySelector('.bin-contents')) {
-    bin.querySelector('.bin-contents').appendChild(el);
-    el.style.pointerEvents = 'none';
-    el.style.opacity = '0.6';
-    var scoreEl = document.getElementById('sortScore');
-    if (scoreEl) {
-      var parts = scoreEl.textContent.match(/\d+/g);
-      var score = parseInt(parts[0]) + 1;
-      var total = parseInt(parts[1]);
-      scoreEl.textContent = 'Score: ' + score + ' / ' + total;
-      if (score === total) {
-        player.gameXP += 50;
-        saveData(); updateLevel();
-        showToast('🎉 Parcel Sorter complete! +50 XP', 'xp');
-        setTimeout(stopSortGame, 1500);
-      }
-    }
-  }
+function factoryRate(f){ return Math.max(1, f.workers * f.workerLevel * (1 + (f.conveyor-1)*0.5) * (1 + (f.scanner-1)*0.25)); }
+function factoryCosts(f){ return {worker:Math.floor(25*Math.pow(1.55,f.workers-1)), sorter:Math.floor(40*Math.pow(1.7,f.workerLevel-1)), conveyor:Math.floor(60*Math.pow(1.8,f.conveyor-1)), scanner:Math.floor(80*Math.pow(1.9,f.scanner-1))}; }
+function tickFactory(silent){
+  var f=getFactory(), now=Date.now(), elapsed=Math.max(0,Math.min((now-f.lastTick)/1000, 60*60*24));
+  var amount=Math.floor(elapsed*factoryRate(f));
+  if(amount>0){ f.sorted+=amount; f.coins+=amount; f.lastTick=now; if(!silent){ f.log.unshift('+'+amount+' parcels sorted automatically'); f.log=f.log.slice(0,8); } } else f.lastTick=now;
+  return amount;
 }
-function stopSortGame() {
-  activeGame = null;
-  document.getElementById('questSorter').classList.remove('playing');
-  document.getElementById('sortGameArea').style.display = 'none';
+function factoryBuy(type){
+  var f=getFactory(); tickFactory(false); var c=factoryCosts(f), cost=c[type];
+  if(f.coins<cost){showToast('💰 Need '+cost+' coins','danger');return;}
+  f.coins-=cost; if(type==='worker')f.workers++; if(type==='sorter')f.workerLevel++; if(type==='conveyor')f.conveyor++; if(type==='scanner')f.scanner++;
+  f.log.unshift('Upgraded '+type+' for '+cost+' coins'); f.log=f.log.slice(0,8); saveData(); renderFactory();
 }
+function factoryManualSort(){
+  var f=getFactory(); tickFactory(false); var bonus=5*f.scanner; f.sorted+=bonus; f.coins+=bonus; f.log.unshift('📦 Manual rush: +'+bonus+' parcels'); f.log=f.log.slice(0,8); player.gameXP += Math.max(1,Math.floor(bonus/2)); saveData(); updateLevel(); renderFactory();
+}
+function renderFactory(){
+  var area=document.getElementById('sortGameArea'); if(!area || activeGame!=='sort') return;
+  var f=getFactory(); tickFactory(true); var c=factoryCosts(f), rate=factoryRate(f);
+  var next=100+f.conveyor*25, progress=Math.min(100,(f.sorted%next)/next*100);
+  area.innerHTML='<div class="factory-head"><div><strong>🏭 Parcel Sorting Factory</strong><div style="font-size:.72rem;color:var(--text-secondary)">Idle production continues while you are away.</div></div><div class="factory-coins">🪙 '+Math.floor(f.coins)+'</div></div>'+
+  '<div class="factory-grid"><div class="factory-stat">📦 Sorted<b>'+Math.floor(f.sorted)+'</b></div><div class="factory-stat">⚙️ Rate<b>'+rate.toFixed(1)+'/sec</b></div><div class="factory-stat">👷 Workers<b>'+f.workers+'</b></div><div class="factory-stat">🔧 Sorter Lv.<b>'+f.workerLevel+'</b></div></div>'+
+  '<div style="margin-top:12px;font-size:.75rem;font-weight:700">Conveyor progress</div><div class="factory-progress"><div style="width:'+progress+'%"></div></div>'+
+  '<div class="factory-actions">'+
+  '<button class="btn btn-primary" onclick="factoryManualSort()">📦 Manual Rush +'+(5*f.scanner)+'</button>'+
+  '<button class="btn" onclick="factoryBuy(\'worker\')">👷 Recruit Worker · 🪙 '+c.worker+'</button>'+
+  '<button class="btn" onclick="factoryBuy(\'sorter\')">⚙️ Upgrade Sorter · 🪙 '+c.sorter+'</button>'+
+  '<button class="btn" onclick="factoryBuy(\'conveyor\')">🛞 Faster Conveyor · 🪙 '+c.conveyor+'</button>'+
+  '<button class="btn" onclick="factoryBuy(\'scanner\')">🔍 Better Scanner · 🪙 '+c.scanner+'</button>'+
+  '<button class="btn btn-danger" onclick="stopSortGame()">Close Factory</button></div>'+
+  '<div class="factory-log">'+(f.log.length?f.log.map(function(x){return '<div>• '+x+'</div>';}).join(''):'No factory activity yet.')+'</div>';
+}
+function startSortGame(){
+  if(activeGame) return; activeGame='sort'; document.getElementById('questSorter').classList.add('playing'); document.getElementById('sortGameArea').style.display='block'; getFactory(); tickFactory(false); renderFactory();
+  if(window.factoryTimer) clearInterval(window.factoryTimer); window.factoryTimer=setInterval(function(){tickFactory(false);renderFactory();saveData();},1000);
+}
+function moveParcel(el){ /* legacy compatibility */ }
+function stopSortGame(){ activeGame=null; if(window.factoryTimer)clearInterval(window.factoryTimer); document.getElementById('questSorter').classList.remove('playing'); document.getElementById('sortGameArea').style.display='none'; saveData(); }
 
 function startMemoryGame() {
   if (activeGame) return;
@@ -5263,7 +5244,8 @@ function openModal(id) {
   var content = document.getElementById("modalContent");
   content.innerHTML =
     '<div class="modal-row"><span class="modal-label">Platform</span><span class="modal-value">' + p.platform + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Tracking</span><span class="modal-value" style="font-family:monospace;font-size:0.8rem;">' + p.tracking + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Courier</span><span class="modal-value">' + detectCourier(p.tracking,p.platform,p.courier) + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Tracking</span><span class="modal-value" style="font-family:monospace;font-size:0.8rem;">' + (courierTrackUrl(detectCourier(p.tracking,p.platform,p.courier),p.tracking) ? '<a href="' + courierTrackUrl(detectCourier(p.tracking,p.platform,p.courier),p.tracking) + '" target="_blank" rel="noopener">Track ↗</a> ' : '') + p.tracking + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Receiver</span><span class="modal-value">' + p.receiver + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Category</span><span class="modal-value">' + p.category + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Item</span><span class="modal-value">' + p.item + '</span></div>' +
@@ -5308,6 +5290,8 @@ function editCurrent() {
   closeModal();
   // Populate form
   document.getElementById("apTracking").value = p.tracking;
+  document.getElementById("apCourier").value = p.courier || detectCourier(p.tracking, p.platform, "");
+  document.getElementById("apCourier").dataset.auto = "0";
   document.getElementById("apReceiver").value = p.receiver;
   document.getElementById("apPhone").value = "6738360189";
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === p.for;});
@@ -5338,6 +5322,9 @@ function addParcel() {
   document.getElementById("addParcelModal").dataset.editId = "";
   // Reset form
   document.getElementById("apTracking").value = "";
+  document.getElementById("apCourier").value = "";
+  document.getElementById("apCourier").dataset.auto = "1";
+  document.getElementById("courierHint").textContent = "";
   document.getElementById("apItem").value = "";
   document.getElementById("apQty").value = "1";
   document.getElementById("apPrice").value = "0";
@@ -5359,6 +5346,9 @@ function closeAddParcelModal() {
   document.getElementById("addParcelModal").dataset.editId = "";
   // Reset form
   document.getElementById("apTracking").value = "";
+  document.getElementById("apCourier").value = "";
+  document.getElementById("apCourier").dataset.auto = "1";
+  document.getElementById("courierHint").textContent = "";
   document.getElementById("apItem").value = "";
   document.getElementById("apQty").value = "1";
   document.getElementById("apPrice").value = "0";
@@ -5401,6 +5391,7 @@ function submitAddParcel() {
       var pickupCode = document.getElementById("apPickupCode").value.trim();
       var nujCost = parseFloat(document.getElementById("apNujCost").value) || 0;
       parcels[idx].tracking = tracking;
+      parcels[idx].courier = document.getElementById("apCourier").value || detectCourier(tracking, platform, "");
       parcels[idx].platform = platform;
       parcels[idx].for = forWho;
       parcels[idx].category = category;
@@ -5430,7 +5421,7 @@ function submitAddParcel() {
     var pickupCode = document.getElementById("apPickupCode").value.trim();
     var nujCost = parseFloat(document.getElementById("apNujCost").value) || 0;
     parcels.push({
-      id: newId, platform: platform, tracking: tracking, receiver: receiver,
+      id: newId, platform: platform, tracking: tracking, courier: (document.getElementById("apCourier").value || detectCourier(tracking, platform, "")), receiver: receiver,
       category: category, item: item, qty: qty, price: price,
       pickupCode: pickupCode, nujCost: nujCost, status: status, remark: remark, for: forWho
     });
@@ -5511,332 +5502,40 @@ function loadGistSettings() {
   } catch(e) {}
 }
 
-function uploadToGist() {
-  var token = document.getElementById("gistToken").value.trim();
-  if (!token) { showToast("❌ Enter your GitHub token first", "danger"); return; }
-  var gistId = document.getElementById("gistId").value.trim();
-  var data = { parcels: parcels, priceHistory: priceHistory, player: player, exportedAt: new Date().toISOString() };
-  var json = JSON.stringify(data, null, 2);
-
-  var url = gistId ? "https://api.github.com/gists/" + gistId : "https://api.github.com/gists";
-  var method = gistId ? "PATCH" : "POST";
-  var body = JSON.stringify({
-    description: "Parcel Quest data backup",
-    public: false,
-    files: { "parcel_quest_data.json": { content: json } }
-  });
-
-  showToast("☁️ Uploading to Gist...", "info");
-  fetch(url, {
-    method: method,
-    headers: { 
-      "Authorization": "Bearer " + token,
-      "Accept": "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2026-03-10",
-      "Content-Type": "application/json"
-    },
-    body: body
-  }).then(function(r) {
-    if (!r.ok) {
-      return r.text().then(function(text) { throw new Error("HTTP " + r.status + ": " + text.substring(0,200)); });
-    }
-    return r.json();
-  }).then(function(result) {
-    var newGistId = result.id;
-    document.getElementById("gistId").value = newGistId;
-    try { localStorage.setItem("parcelQuest_gistId", newGistId); } catch(e) {}
-    showToast("☁️ Uploaded to Gist! ID: " + newGistId, "success");
-  }).catch(function(err) {
-    showToast("❌ Upload failed: " + err.message, "danger");
-    console.error("Gist upload error:", err);
-  });
+var gistSaveTimer=null; var gistUploadBusy=false;
+function isAutoGistEnabled(){ try{return localStorage.getItem('parcelQuest_autoSync')==='1' && !!localStorage.getItem('parcelQuest_gistId') && !!localStorage.getItem('parcelQuest_gistToken');}catch(e){return false;} }
+function buildGistData(){ return {schemaVersion:3, parcels:parcels, priceHistory:priceHistory, player:player, updatedAt:Number(localStorage.getItem('parcelQuest_localUpdatedAt'))||Date.now(), exportedAt:new Date().toISOString()}; }
+function scheduleGistSave(){ if(!isAutoGistEnabled())return; clearTimeout(gistSaveTimer); gistSaveTimer=setTimeout(function(){uploadToGist(true);},8000); }
+function saveGistToken(){var token=document.getElementById('gistToken').value.trim();try{localStorage.setItem('parcelQuest_gistToken',token);}catch(e){}showToast('Token saved','success');}
+function saveGistId(){var id=document.getElementById('gistId').value.trim();try{localStorage.setItem('parcelQuest_gistId',id);}catch(e){}showToast('Gist ID saved','success');}
+function saveAutoSync(){var enabled=document.getElementById('autoSync').checked;try{localStorage.setItem('parcelQuest_autoSync',enabled?'1':'0');}catch(e){} if(enabled) reconcileGistOnLoad();}
+function loadGistSettings(){try{var token=localStorage.getItem('parcelQuest_gistToken'),gistId=localStorage.getItem('parcelQuest_gistId'),autoSync=localStorage.getItem('parcelQuest_autoSync');if(token)document.getElementById('gistToken').value=token;if(gistId)document.getElementById('gistId').value=gistId;if(autoSync==='1'&&document.getElementById('autoSync'))document.getElementById('autoSync').checked=true;}catch(e){}}
+function gistFetch(gistId,token){var h={'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};if(token)h.Authorization='Bearer '+token;return fetch('https://api.github.com/gists/'+gistId,{headers:h}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json();}).then(function(result){var file=result.files&&result.files[GIST_FILENAME];if(!file)throw new Error('parcel_quest_data.json not found');return JSON.parse(file.content);});}
+function uploadToGist(silent){
+  var token=document.getElementById('gistToken').value.trim()||localStorage.getItem('parcelQuest_gistToken')||''; if(!token){if(!silent)showToast('❌ Enter your GitHub token first','danger');return Promise.reject(new Error('No token'));}
+  var gistId=document.getElementById('gistId').value.trim()||localStorage.getItem('parcelQuest_gistId')||''; var data=buildGistData();
+  if(gistUploadBusy)return Promise.resolve(); gistUploadBusy=true; if(!silent)showToast('☁️ Uploading to Gist...','info');
+  var url=gistId?'https://api.github.com/gists/'+gistId:'https://api.github.com/gists', method=gistId?'PATCH':'POST';
+  return fetch(url,{method:method,headers:{'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28','Content-Type':'application/json'},body:JSON.stringify({description:'Parcel Quest data backup',public:false,files:{[GIST_FILENAME]:{content:JSON.stringify(data,null,2)}}})})
+  .then(function(r){if(!r.ok)return r.text().then(function(t){throw new Error('HTTP '+r.status+': '+t.substring(0,180));});return r.json();})
+  .then(function(result){var id=result.id||gistId;if(id){document.getElementById('gistId').value=id;localStorage.setItem('parcelQuest_gistId',id);localStorage.setItem('parcelQuest_autoSync','1');var cb=document.getElementById('autoSync');if(cb)cb.checked=true;} if(!silent)showToast('☁️ Gist saved — auto-sync enabled','success');})
+  .catch(function(err){if(!silent)showToast('❌ Upload failed: '+err.message,'danger');console.error('Gist upload',err);})
+  .finally(function(){gistUploadBusy=false;});
 }
-
-function downloadFromGist() {
-  var token = document.getElementById("gistToken").value.trim();
-  var gistId = document.getElementById("gistId").value.trim();
-  if (!gistId) { showToast("❌ Enter a Gist ID first", "danger"); return; }
-
-  var headers = {
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2026-03-10"
-  };
-  if (token) headers["Authorization"] = "Bearer " + token;
-
-  showToast("☁️ Downloading from Gist...", "info");
-  fetch("https://api.github.com/gists/" + gistId, { headers: headers })
-    .then(function(r) { 
-      if (!r.ok) {
-        return r.text().then(function(text) { throw new Error("HTTP " + r.status + ": " + text.substring(0,200)); });
-      }
-      return r.json(); 
-    })
-    .then(function(result) {
-      var file = result.files && result.files["parcel_quest_data.json"];
-      if (!file) { throw new Error("parcel_quest_data.json not found in gist"); }
-      var data = JSON.parse(file.content);
-      if (data.parcels && Array.isArray(data.parcels) && data.parcels.length > 0) {
-        if (confirm("Download " + data.parcels.length + " parcels from Gist? This will REPLACE local data.")) {
-          parcels = data.parcels;
-          // Fix any duplicate IDs that may exist in Gist data
-          if (dedupParcelIds()) {
-            showToast("🔧 Fixed duplicate IDs from Gist", "success");
-          }
-          if (data.priceHistory) priceHistory = data.priceHistory;
-          if (data.player) player = data.player;
-          saveData();
-          renderAll();
-          showToast("☁️ Downloaded " + data.parcels.length + " parcels from Gist!", "success");
-        }
-      } else {
-        throw new Error("Invalid data format");
-      }
-    }).catch(function(err) {
-      showToast("❌ Download failed: " + err.message, "danger");
-      console.error("Gist download error:", err);
-    });
+function applyGistData(data,reason){if(!data||!Array.isArray(data.parcels))throw new Error('Invalid data format');parcels=data.parcels;priceHistory=Array.isArray(data.priceHistory)?data.priceHistory:priceHistory;if(data.player&&typeof data.player==='object')player=data.player;dedupParcelIds();try{localStorage.setItem('parcelQuest_localUpdatedAt',String(Number(data.updatedAt)||Date.now()));}catch(e){}saveData({skipGist:true});renderAll();if(reason)showToast(reason,'success');}
+function downloadFromGist(){var token=document.getElementById('gistToken').value.trim(),gistId=document.getElementById('gistId').value.trim();if(!gistId){showToast('❌ Enter a Gist ID first','danger');return;}showToast('☁️ Downloading from Gist...','info');gistFetch(gistId,token).then(function(data){if(!data.parcels||!data.parcels.length)throw new Error('Gist contains no parcel data');if(confirm('Download '+data.parcels.length+' parcels from Gist? This will REPLACE local data.'))applyGistData(data,'☁️ Downloaded '+data.parcels.length+' parcels from Gist');}).catch(function(e){showToast('❌ Download failed: '+e.message,'danger');});}
+function mergeFromGist(){var token=document.getElementById('gistToken').value.trim(),gistId=document.getElementById('gistId').value.trim();if(!gistId){showToast('❌ Enter a Gist ID first','danger');return;}gistFetch(gistId,token).then(function(data){var local={},added=0,updated=0;parcels.forEach(function(p){local[p.tracking]=p;});(data.parcels||[]).forEach(function(g){if(!g.tracking)return;if(!local[g.tracking]){parcels.push(g);local[g.tracking]=g;added++;}else if(g.status&&local[g.tracking].status!==g.status){var order={Pending:0,Scheduled:1,Delivered:2,Refunded:3,Cancelled:4,Consolidated:5};if((order[g.status]||0)>(order[local[g.tracking].status]||0)){local[g.tracking].status=g.status;updated++;}}});var keys={};priceHistory.forEach(function(x){keys[(x.item||'')+'|'+x.platform+'|'+x.price+'|'+x.date]=1;});(data.priceHistory||[]).forEach(function(x){var k=(x.item||'')+'|'+x.platform+'|'+x.price+'|'+x.date;if(!keys[k]){priceHistory.push(x);keys[k]=1;}});if(data.player&&Number(data.player.totalXP)>Number(player.totalXP))player=data.player;dedupParcelIds();saveData();renderAll();showToast('🔀 Merged! Added '+added+' parcels, updated '+updated+' statuses.','success');}).catch(function(e){showToast('❌ Merge failed: '+e.message,'danger');});}
+function reconcileGistOnLoad(){
+  if(!isAutoGistEnabled())return; var token=localStorage.getItem('parcelQuest_gistToken'),gistId=localStorage.getItem('parcelQuest_gistId');
+  gistFetch(gistId,token).then(function(remote){var localTs=Number(localStorage.getItem('parcelQuest_localUpdatedAt'))||0, remoteTs=Number(remote.updatedAt)||0;
+    if(!remote.parcels||!Array.isArray(remote.parcels))return;
+    if(localTs===0 && remoteTs>0){applyGistData(remote,'☁️ Restored '+remote.parcels.length+' parcels from Gist');return;}
+    if(remoteTs>localTs){applyGistData(remote,'☁️ Restored newer Gist data');return;}
+    if(localTs>remoteTs){uploadToGist(true);return;}
+    // Equal timestamps: keep local; never wipe it on refresh.
+  }).catch(function(e){console.log('Gist reconcile skipped:',e.message);});
 }
-
-function mergeFromGist() {
-  var token = document.getElementById("gistToken").value.trim();
-  var gistId = document.getElementById("gistId").value.trim();
-  if (!gistId) { showToast("❌ Enter a Gist ID first", "danger"); return; }
-
-  var headers = {
-    "Accept": "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2026-03-10"
-  };
-  if (token) headers["Authorization"] = "Bearer " + token;
-
-  showToast("☁️ Downloading from Gist for merge...", "info");
-  fetch("https://api.github.com/gists/" + gistId, { headers: headers })
-    .then(function(r) { 
-      if (!r.ok) {
-        return r.text().then(function(text) { throw new Error("HTTP " + r.status + ": " + text.substring(0,200)); });
-      }
-      return r.json(); 
-    })
-    .then(function(result) {
-      var file = result.files && result.files["parcel_quest_data.json"];
-      if (!file) { throw new Error("parcel_quest_data.json not found in gist"); }
-      var data = JSON.parse(file.content);
-      if (!data.parcels || !Array.isArray(data.parcels)) { throw new Error("Invalid data format"); }
-
-      // Merge logic: add parcels from Gist that don't exist locally (by tracking number)
-      var localTrackings = {};
-      parcels.forEach(function(p) { localTrackings[p.tracking] = p; });
-
-      var added = 0, updated = 0;
-      data.parcels.forEach(function(gistParcel) {
-        if (!gistParcel.tracking) return;
-        if (!localTrackings[gistParcel.tracking]) {
-          // Parcel exists in Gist but not locally - add it
-          parcels.push(gistParcel);
-          localTrackings[gistParcel.tracking] = gistParcel;
-          added++;
-        } else {
-          // Parcel exists in both - optionally update if Gist is newer
-          // For now, keep local version but update if status is more advanced
-          var localP = localTrackings[gistParcel.tracking];
-          var statusOrder = { "Pending": 0, "Scheduled": 1, "Delivered": 2, "Refunded": 3, "Cancelled": 4, "Consolidated": 5 };
-          var gistStatusVal = statusOrder[gistParcel.status] || 0;
-          var localStatusVal = statusOrder[localP.status] || 0;
-          if (gistStatusVal > localStatusVal) {
-            localP.status = gistParcel.status;
-            updated++;
-          }
-        }
-      });
-
-      // Also merge price history (deduplicate by item+platform+price+date)
-      if (data.priceHistory && Array.isArray(data.priceHistory)) {
-        var localPriceKeys = {};
-        priceHistory.forEach(function(ph) {
-          localPriceKeys[(ph.item || "") + "|" + (ph.platform || "") + "|" + ph.price + "|" + (ph.date || "")] = true;
-        });
-        data.priceHistory.forEach(function(ph) {
-          var key = (ph.item || "") + "|" + (ph.platform || "") + "|" + ph.price + "|" + (ph.date || "");
-          if (!localPriceKeys[key]) {
-            priceHistory.push(ph);
-            localPriceKeys[key] = true;
-          }
-        });
-      }
-
-      // Merge player XP (take the higher of the two)
-      if (data.player && data.player.totalXP > player.totalXP) {
-        player = data.player;
-      }
-
-      // Fix any duplicate IDs after merge
-      if (dedupParcelIds()) {
-        showToast("🔧 Fixed duplicate IDs after Gist merge", "success");
-      }
-
-      saveData();
-      renderAll();
-      showToast("🔀 Merged! Added " + added + " new parcels, updated " + updated + " statuses. Total: " + parcels.length, "success");
-    }).catch(function(err) {
-      showToast("❌ Merge failed: " + err.message, "danger");
-      console.error("Gist merge error:", err);
-    });
-}
-
-function autoSyncFromGist() {
-  try {
-    var autoSync = localStorage.getItem("parcelQuest_autoSync");
-    var gistId = localStorage.getItem("parcelQuest_gistId");
-    if (autoSync !== "1" || !gistId) return;
-    var token = localStorage.getItem("parcelQuest_gistToken") || "";
-    var headers = {
-      "Accept": "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2026-03-10"
-    };
-    if (token) headers["Authorization"] = "Bearer " + token;
-    fetch("https://api.github.com/gists/" + gistId, { headers: headers })
-      .then(function(r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function(result) {
-        var file = result.files && result.files["parcel_quest_data.json"];
-        if (!file) return;
-        var data = JSON.parse(file.content);
-        if (data.parcels && Array.isArray(data.parcels) && data.parcels.length > 0) {
-          parcels = data.parcels;
-          // Fix any duplicate IDs from Gist auto-sync
-          if (dedupParcelIds()) {
-            showToast("🔧 Fixed duplicate IDs from Gist auto-sync", "success");
-          }
-          if (data.priceHistory && Array.isArray(data.priceHistory)) priceHistory = data.priceHistory;
-          if (data.player && typeof data.player === "object") player = data.player;
-          saveData();
-          renderAll();
-          showToast("☁️ Auto-synced " + data.parcels.length + " parcels from Gist", "success");
-        }
-      }).catch(function(e) { console.log("Auto-sync skipped:", e.message); });
-  } catch(e) {}
-}
-
-function findDuplicates() {
-  var trackingMap = {};
-  var duplicates = [];
-  parcels.forEach(function(p) {
-    var key = p.tracking;
-    if (!key) return;
-    if (trackingMap[key]) {
-      duplicates.push({ tracking: key, parcels: [trackingMap[key], p] });
-    } else {
-      trackingMap[key] = p;
-    }
-  });
-  var container = document.getElementById("duplicateCheckerContent");
-  if (duplicates.length === 0) {
-    container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><div>No duplicates found! All tracking numbers are unique.</div></div>';
-    showToast("✅ No duplicate tracking numbers found", "success");
-    return;
-  }
-  var html = '<div style="font-size:0.85rem;margin-bottom:8px;"><strong>' + duplicates.length + ' duplicate tracking number(s) found:</strong></div>';
-  html += '<div style="max-height:300px;overflow-y:auto;">';
-  duplicates.forEach(function(dup, idx) {
-    html += '<div style="padding:10px;margin-bottom:8px;background:var(--surface-raised);border:1px solid var(--border);border-radius:var(--radius-sm);">';
-    html += '<div style="font-weight:700;color:var(--danger);margin-bottom:6px;">#' + (idx+1) + '. Tracking: <span style="font-family:monospace;">' + dup.tracking + '</span></div>';
-    dup.parcels.forEach(function(p) {
-      var statusClass = STATUS_COLORS[p.status] || "status-pending";
-      html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border);">';
-      html += '<span>Parcel #' + p.id + ' — ' + p.item.substring(0,40) + (p.item.length>40?"...":"") + '</span>';
-      html += '<span class="status-badge ' + statusClass + '">' + p.status + '</span>';
-      html += '</div>';
-    });
-    html += '</div>';
-  });
-  html += '</div>';
-  container.innerHTML = html;
-  showToast("⚠️ Found " + duplicates.length + " duplicate tracking number(s)", "warning");
-}
-
-function removeDuplicatePrompt() {
-  var tracking = prompt("Enter the tracking number of the duplicate parcel to remove:");
-  if (!tracking || !tracking.trim()) return;
-  tracking = tracking.trim();
-  var matches = parcels.filter(function(p){return p.tracking === tracking;});
-  if (matches.length === 0) { showToast("❌ No parcel found with that tracking number", "danger"); return; }
-  if (matches.length === 1) { showToast("ℹ️ Only one parcel found with that tracking number (not a duplicate)", "info"); return; }
-  var msg = "Found " + matches.length + " parcels with tracking '" + tracking + "':";
-  matches.forEach(function(p) {
-    msg += " | #" + p.id + " " + p.platform + " " + p.status;
-  });
-  msg += " | Enter the Parcel # to DELETE (or Cancel to keep all):";
-  var idToDelete = prompt(msg);
-  if (!idToDelete || !idToDelete.trim()) return;
-  var deleteId = parseInt(idToDelete.trim());
-  if (isNaN(deleteId)) { showToast("❌ Invalid parcel number", "danger"); return; }
-  var idx = parcels.findIndex(function(p){return p.id === deleteId && p.tracking === tracking;});
-  if (idx < 0) { showToast("❌ Parcel #" + deleteId + " not found with that tracking number", "danger"); return; }
-  if (confirm("Are you sure you want to delete Parcel #" + deleteId + "?")) {
-    parcels.splice(idx, 1);
-    saveData(); renderAll();
-    showToast("🗑️ Parcel #" + deleteId + " deleted. Remaining with this tracking: " + (matches.length-1), "success");
-  }
-}
-
-function renderSettings() {
-  loadGistSettings();
-  var el = document.getElementById("settingsStats");
-  if (!el) return;
-  var totalSpent = parcels.reduce(function(s,p){return s+p.price},0);
-  var totalNUJ = parcels.reduce(function(s,p){return s+p.nujCost},0);
-  var avgNUJ = parcels.filter(function(p){return p.nujCost>0}).length > 0 ? totalNUJ / parcels.filter(function(p){return p.nujCost>0}).length : 0;
-  el.innerHTML =
-    '<div class="modal-row"><span class="modal-label">Total Parcels</span><span class="modal-value">' + parcels.length + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Total Spent</span><span class="modal-value">RM ' + totalSpent.toFixed(2) + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Total NUJ Cost</span><span class="modal-value">$ ' + totalNUJ.toFixed(2) + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Avg NUJ Cost</span><span class="modal-value">$ ' + avgNUJ.toFixed(2) + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Price Entries</span><span class="modal-value">' + priceHistory.length + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Current Level</span><span class="modal-value">Lv. ' + player.level + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Total XP</span><span class="modal-value">' + player.totalXP + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Game XP</span><span class="modal-value">' + player.gameXP + '</span></div>';
-}
-
-// ===================== UI HELPERS =====================
-function showToast(msg, type) {
-  var container = document.getElementById("toastContainer");
-  var toast = document.createElement("div");
-  toast.className = "toast " + type;
-  toast.textContent = msg;
-  container.appendChild(toast);
-  setTimeout(function() {
-    toast.style.animation = "toastOut 0.3s forwards";
-    setTimeout(function(){toast.remove();}, 300);
-  }, 3000);
-}
-function showLevelup(lvl, title) {
-  document.getElementById("levelupText").textContent = "Level " + lvl + " Reached!";
-  document.getElementById("levelupSub").textContent = "You are now a " + title;
-  document.getElementById("levelupOverlay").classList.add("show");
-}
-function closeLevelup() {
-  document.getElementById("levelupOverlay").classList.remove("show");
-}
-
-
-function toggleTheme() {
-  var body = document.body;
-  var btn = document.getElementById("themeToggle");
-  body.classList.toggle("light-mode");
-  var isLight = body.classList.contains("light-mode");
-  btn.textContent = isLight ? "☀️" : "🌙";
-  btn.title = isLight ? "Switch to dark mode" : "Switch to light mode";
-  try { localStorage.setItem("parcelQuest_theme", isLight ? "light" : "dark"); } catch(e) {}
-  showToast(isLight ? "☀️ Light mode enabled" : "🌙 Dark mode enabled", "info");
-}
-function loadTheme() {
-  try {
-    var saved = localStorage.getItem("parcelQuest_theme");
-    if (saved === "light") {
-      document.body.classList.add("light-mode");
-      var btn = document.getElementById("themeToggle");
-      if (btn) { btn.textContent = "☀️"; btn.title = "Switch to dark mode"; }
-    }
-  } catch(e) {}
-}
+function autoSyncFromGist(){reconcileGistOnLoad();}
 
 function renderAll() {
   renderDashboard();
@@ -5847,56 +5546,12 @@ function renderAll() {
 }
 
 // ===================== AUTO-SAVE =====================
-var autoSaveInterval = null;
-var lastSaveTime = Date.now();
-
-function startAutoSave() {
-  if (autoSaveInterval) clearInterval(autoSaveInterval);
-  autoSaveInterval = setInterval(function() {
-    saveData();
-    lastSaveTime = Date.now();
-    updateSaveIndicator();
-  }, 30000); // Save every 30 seconds
-}
-
-function updateSaveIndicator() {
-  var el = document.getElementById("saveIndicator");
-  if (!el) return;
-  var seconds = Math.floor((Date.now() - lastSaveTime) / 1000);
-  if (seconds < 5) {
-    el.textContent = "💾 saved";
-    el.style.color = "var(--success)";
-    el.style.fontWeight = "600";
-  } else if (seconds < 60) {
-    el.textContent = "💾 saved " + seconds + "s ago";
-    el.style.color = "var(--text-muted)";
-    el.style.fontWeight = "400";
-  } else {
-    el.textContent = "💾 saved " + Math.floor(seconds / 60) + "m ago";
-    el.style.color = "var(--warning)";
-    el.style.fontWeight = "600";
-  }
-}
-
-// Save before page refresh/close
-window.addEventListener("beforeunload", function(e) {
-  saveData();
-  // Always warn before leaving — protects mobile edits from accidental refresh/close
-  e.preventDefault();
-  e.returnValue = "You have unsaved parcel data. Are you sure you want to leave?";
-  return e.returnValue;
-});
-
-// Also save when page becomes hidden (switching apps on mobile)
-document.addEventListener("visibilitychange", function() {
-  if (document.hidden) {
-    saveData();
-    lastSaveTime = Date.now();
-  }
-});
-
-// Update save indicator every 10 seconds
-setInterval(updateSaveIndicator, 10000);
+var autoSaveInterval=null; var lastSaveTime=Date.now();
+function startAutoSave(){if(autoSaveInterval)clearInterval(autoSaveInterval);autoSaveInterval=setInterval(function(){saveData();},30000);}
+function updateSaveIndicator(){var el=document.getElementById('saveIndicator');if(!el)return;var seconds=Math.floor((Date.now()-lastSaveTime)/1000);el.textContent=seconds<5?'💾 saved':seconds<60?'💾 saved '+seconds+'s ago':'💾 saved '+Math.floor(seconds/60)+'m ago';el.style.color=seconds<5?'var(--success)':seconds<60?'var(--text-muted)':'var(--warning)';}
+window.addEventListener('beforeunload',function(){saveData();});
+document.addEventListener('visibilitychange',function(){if(document.hidden)saveData();});
+setInterval(updateSaveIndicator,10000);
 
 // ===================== INIT =====================
 try {
@@ -5916,9 +5571,19 @@ try {
 try {
   startAutoSave();
 } catch(e) { console.error("startAutoSave failed:", e); }
-try {
-  setTimeout(autoSyncFromGist, 1000);
-} catch(e) { console.error("autoSync setup failed:", e); }
+try { loadGistSettings(); } catch(e) { console.error("Gist settings load failed:", e); }
+try { setTimeout(reconcileGistOnLoad, 700); } catch(e) { console.error("Gist reconcile setup failed:", e); }
+try { setInterval(function(){ if(isAutoGistEnabled()) scheduleGistSave(); }, 60000); } catch(e) {}
+try { initPWA(); } catch(e) { console.error("PWA init failed:", e); }
+
+// ===================== PWA =====================
+var deferredInstallPrompt=null;
+function initPWA(){
+  if('serviceWorker' in navigator && location.protocol!=='file:'){ navigator.serviceWorker.register('./sw.js').catch(function(e){console.log('PWA service worker unavailable',e);}); }
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();deferredInstallPrompt=e;var b=document.getElementById('installPwaBtn');if(b)b.style.display='inline-flex';});
+  window.addEventListener('appinstalled',function(){deferredInstallPrompt=null;var b=document.getElementById('installPwaBtn');if(b)b.style.display='none';showToast('📲 Parcel Quest installed!','success');});
+}
+function installPWA(){if(!deferredInstallPrompt){showToast('📲 Use your browser menu → Add to Home screen when available.','info');return;}deferredInstallPrompt.prompt();deferredInstallPrompt.userChoice.then(function(){deferredInstallPrompt=null;});}
 </script>
 <noscript style="color:#f87171;text-align:center;padding:20px;display:block;">JavaScript is required for Parcel Quest.</noscript>
 <div id="jsError" style="display:none;color:#f87171;text-align:center;padding:20px;"></div>
