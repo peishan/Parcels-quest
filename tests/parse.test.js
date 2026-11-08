@@ -68,6 +68,17 @@ t("Shopee Direct and Temu are accepted platforms and keep an unrecognised tracki
   assert.strictEqual(d.platform, "Temu"); assert.strictEqual(d.tracking, "TEMU-ABC123XYZ");
   assert.strictEqual(P.makeDraft({ tracking: "SPXMY123456789012", platform: "Shopee Direct" }, []).platform, "Shopee Direct");
 });
+t("estimated delivery range from a purchase screenshot; guaranteed-by date extends the window", () => {
+  const d = P.makeDraft({ tracking: "680053989206318", estimated_from: "2026-11-12", estimated_to: "2026-11-18" }, []);
+  assert.deepStrictEqual([d.expected, d.expectedEnd], ["2026-11-12", "2026-11-18"]);
+  const single = P.makeDraft({ tracking: "680053989206318", estimated_from: "2026-11-15", estimated_to: "2026-11-15" }, []);
+  const parcel = P.toParcel(single, 1);
+  assert.deepStrictEqual([parcel.expected, "expectedEnd" in parcel], ["2026-11-15", false], "single date has no end");
+  const voucher = P.makeDraft({ tracking: "680053989206318", estimated_from: "2026-11-12", estimated_to: "2026-11-14", promise_date: "15-11-2026" }, []);
+  assert.strictEqual(voucher.expectedEnd, "2026-11-15");
+  const onlyPromise = P.toParcel(P.makeDraft({ tracking: "680053989206318", promise_date: "15-11-2026" }, []), 2);
+  assert.deepStrictEqual([onlyPromise.expected, "expectedEnd" in onlyPromise], ["2026-11-15", false]);
+});
 t("unknown buyer/for fall back to defaults (never invented names)", () => {
   const d = P.makeDraft({ tracking: "680053989206318", boughtBy: "someone", "for": "x" }, []);
   assert.strictEqual(d.boughtBy, "San"); assert.strictEqual(d["for"], "Aisyah");

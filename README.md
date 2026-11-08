@@ -23,8 +23,8 @@ Gamified Malaysian parcel tracker (Shopee / TikTok Shop / Lazada). Static site �
 Settings → *AI Import* → paste an Anthropic API key. It is stored only in this browser's `localStorage` and sent only to `api.anthropic.com`; it is never part of exports or the Gist.
 
 ## Reminders (Today page)
-Driven by optional dates on each parcel: **ordered**, **promised by**, **arrived at branch**, **delivered**, and **reorder after (days)**.
-- *Promise date*: heads-up before, and a high-priority nudge once missed (claim the on-time voucher / chase the courier).
+Driven by optional dates on each parcel: **ordered**, **estimated delivery (from / to)**, **arrived at branch**, **delivered**, and **reorder after (days)**.
+- *Estimated delivery* (the date/range shown when you buy): quiet until the window nears, **Due** when the end is within the heads-up days (default 3), **Overdue** the day after the end. Each state is its own reminder. Actions: **Got it** (marks Delivered today) and **New ETA** (the seller moved the date).
 - *Pickup deadline*: arrived + hold days (default 7, configurable).
 - *Stuck*: Pending/Scheduled longer than N days after ordering (default 14).
 - *Reorder*: delivered (or ordered) + reorder days, for consumables.

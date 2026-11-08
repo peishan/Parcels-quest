@@ -5,7 +5,7 @@
 
   var FOR_OPTIONS = ["San", "Aisyah", "Joel"];        // who the parcel is for
   var BOUGHT_OPTIONS = ["San", "KW Liang"];            // who purchased it
-  var DATE_FIELDS = ["ordered", "expected", "arrived", "delivered"];
+  var DATE_FIELDS = ["ordered", "expected", "expectedEnd", "arrived", "delivered"];
 
   var MONTHS = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, sept: 9,
                  oct: 10, nov: 11, dec: 12 };
@@ -66,6 +66,12 @@
       if (p[k] === "") { delete p[k]; changed = true; continue; }
       var iso = parseDateLoose(p[k]);
       if (iso !== p[k]) { if (iso) p[k] = iso; else delete p[k]; changed = true; }
+    }
+    // Estimated-delivery window: expected = earliest, expectedEnd = latest. Keep them in order.
+    if (p.expectedEnd && !p.expected) { p.expected = p.expectedEnd; delete p.expectedEnd; changed = true; }
+    else if (p.expected && p.expectedEnd) {
+      if (p.expectedEnd === p.expected) { delete p.expectedEnd; changed = true; }
+      else if (p.expectedEnd < p.expected) { var tmp = p.expected; p.expected = p.expectedEnd; p.expectedEnd = tmp; changed = true; }
     }
     if (p.reorderDays != null) {
       var n = Math.round(Number(p.reorderDays));

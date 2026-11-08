@@ -135,7 +135,8 @@
     "",
     "status: Delivered only if the screenshot shows the parcel was delivered; otherwise Pending.",
     "category: choose the best match from the enum.",
-    "DATES: return ISO YYYY-MM-DD only when the year can be determined from the screenshot, otherwise empty. order_date = when the order was placed;",
+    "DATES: return ISO YYYY-MM-DD. Today's date is " + new Date().toISOString().slice(0, 10) + ". If a date shows no year, infer it as the nearest sensible one relative to today and the order date; otherwise leave empty. order_date = when the order was placed;",
+    "estimated_from / estimated_to = the ESTIMATED DELIVERY shown at purchase (often a range such as 'Est. delivery 12 Nov - 18 Nov', or 'Arrives by 15 Nov'; for a single date use it for both);",
     "delivered_date = when it was delivered (e.g. 'Delivered on 7 Nov' with a timestamp 07-11-2026); promise_date = a courier/platform guaranteed delivery-by date (e.g. 'Guaranteed On-Time Delivery ... by 15-11-2026').",
     "Do not output names or addresses of people.",
     "Never guess values you cannot see; use empty string or 0 and say so in notes."
@@ -163,6 +164,8 @@
               status: { type: "string", "enum": P.STATUSES },
               order_date: { type: "string", description: "YYYY-MM-DD or empty" },
               delivered_date: { type: "string", description: "YYYY-MM-DD or empty" },
+              estimated_from: { type: "string", description: "YYYY-MM-DD or empty" },
+              estimated_to: { type: "string", description: "YYYY-MM-DD or empty" },
               promise_date: { type: "string", description: "YYYY-MM-DD or empty" },
               notes: { type: "string" }
             },
@@ -215,6 +218,7 @@
       tracking_raw: rec.tracking_raw, platform: rec.platform, item: rec.item, qty: rec.qty,
       price: rec.amount_paid, category: rec.category, status: rec.status,
       order_date: rec.order_date, delivered_date: rec.delivered_date, promise_date: rec.promise_date,
+      estimated_from: rec.estimated_from, estimated_to: rec.estimated_to,
       boughtBy: lsGet("parcelQuest_defaultBuyer") || "San", "for": lsGet("parcelQuest_defaultFor") || "Aisyah"
     }, parcels);
     if (notes) d.aiNotes = notes;
@@ -230,7 +234,7 @@
       if (!prev.price && d.price) prev.price = d.price;
       if (prev.item === "New Item" && d.item !== "New Item") prev.item = d.item;
       if (prev.status === "Pending" && d.status === "Delivered") prev.status = "Delivered";
-      ["ordered", "expected", "delivered"].forEach(function (k) { if (!prev[k] && d[k]) prev[k] = d[k]; });
+      ["ordered", "expected", "expectedEnd", "delivered"].forEach(function (k) { if (!prev[k] && d[k]) prev[k] = d[k]; });
     });
     return out;
   }
@@ -290,7 +294,7 @@
         var n = P.normalizeTracking(this.value);
         if (n) { d.tracking = n.tracking; if (n.platform) d.platform = n.platform; }
         var nd = P.makeDraft({ tracking: d.tracking, platform: d.platform, item: d.item, qty: d.qty, price: d.price,
-          category: d.category, status: d.status, "for": d["for"], boughtBy: d.boughtBy, ordered: d.ordered, expected: d.expected,
+          category: d.category, status: d.status, "for": d["for"], boughtBy: d.boughtBy, ordered: d.ordered, expected: d.expected, expectedEnd: d.expectedEnd,
           delivered: d.delivered, reorderDays: d.reorderDays }, parcels);
         d.dupOf = nd.dupOf; d.warnings = nd.warnings; d.include = !d.dupOf && !!d.tracking;
         renderPreview();
@@ -317,7 +321,8 @@
         field("For", select(ParcelModel.FOR_OPTIONS, d["for"], function () { d["for"] = this.value; })),
         field("Purchased by", select(ParcelModel.BOUGHT_OPTIONS, d.boughtBy, function () { d.boughtBy = this.value; })),
         field("Ordered", el("input", { type: "date", value: d.ordered || "", onchange: function () { d.ordered = this.value; } })),
-        field("Promised by", el("input", { type: "date", value: d.expected || "", onchange: function () { d.expected = this.value; } })),
+        field("Est. delivery from", el("input", { type: "date", value: d.expected || "", onchange: function () { d.expected = this.value; } })),
+        field("Est. delivery to", el("input", { type: "date", value: d.expectedEnd || "", onchange: function () { d.expectedEnd = this.value; } })),
         field("Delivered", el("input", { type: "date", value: d.delivered || "", onchange: function () { d.delivered = this.value; } })),
         field("Reorder after (days)", el("input", { type: "number", min: 0, value: d.reorderDays || "", placeholder: "optional", oninput: function () { d.reorderDays = Math.max(0, parseInt(this.value) || 0); } }))
       ]);
@@ -345,7 +350,7 @@
         if (cur && d.dupAction !== "skip") {
           cur.status = d.status;
           if (!cur.price && d.price) cur.price = d.price;
-          ["ordered", "expected", "delivered"].forEach(function (k) { if (!cur[k] && d[k]) cur[k] = d[k]; });
+          ["ordered", "expected", "expectedEnd", "delivered"].forEach(function (k) { if (!cur[k] && d[k]) cur[k] = d[k]; });
           updated++;
         }
         return;

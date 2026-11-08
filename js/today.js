@@ -76,6 +76,26 @@
     giveXP(DONE_XP, "✅ Cleared");
     renderToday();
   }
+  // The parcel arrived: mark it Delivered today, which also ends its estimate reminders.
+  function gotIt(r) {
+    var p = parcels.filter(function (x) { return x.id === r.parcelId; })[0];
+    if (!p) return;
+    p.status = "Delivered"; p.delivered = today();
+    logActivity(); saveMeta(); saveData(); renderAll();
+    giveXP(DONE_XP + 10, "📦 Received");
+  }
+  // The seller moved the estimate: replace it with a single new date.
+  function newEta(r) {
+    var p = parcels.filter(function (x) { return x.id === r.parcelId; })[0];
+    if (!p) return;
+    var v = prompt("New estimated delivery date (e.g. 2026-11-20 or 20-11-2026):", p.expectedEnd || p.expected || "");
+    if (v === null) return;
+    var iso = M.parseDateLoose(v);
+    if (!iso) { showToast("Couldn't read that date — use YYYY-MM-DD or DD-MM-YYYY", "danger"); return; }
+    p.expected = iso; delete p.expectedEnd;
+    logActivity(); saveMeta(); saveData(); renderAll();
+    showToast("📅 Estimate moved to " + iso, "success");
+  }
   function snooze(r, days) {
     meta.dismissed[r.key] = M.addDays(today(), days); saveMeta();
     showToast("💤 Snoozed " + days + " days", "info");
@@ -91,7 +111,7 @@
   }
   function chip(r) {
     var t = r.daysLeft < 0 ? Math.abs(r.daysLeft) + "d late" : r.daysLeft === 0 ? "today" : "in " + r.daysLeft + "d";
-    return el("span", { "class": "td-chip sev-" + r.severity, text: r.type === "nodates" ? "info" : t });
+    return el("span", { "class": "td-chip sev-" + r.severity, text: r.type === "noeta" ? "info" : t });
   }
 
   window.renderToday = function () {
@@ -124,10 +144,14 @@
     all.forEach(function (r) {
       var actions = el("div", { "class": "td-actions" });
       if (r.parcelId) actions.appendChild(el("button", { "class": "btn", text: "Open", onclick: function () { openModal(r.parcelId); } }));
-      if (r.type === "nodates") actions.appendChild(el("button", { "class": "btn", text: "Show parcels", onclick: function () { showSection("parcels"); } }));
-      if (r.type !== "nodates") {
+      if (r.type === "noeta") actions.appendChild(el("button", { "class": "btn", text: "Show parcels", onclick: function () { showSection("parcels"); } }));
+      if (r.type === "promise" && r.parcelId) {
+        actions.appendChild(el("button", { "class": "btn", text: "📅 New ETA", title: "The seller gave a new estimated date", onclick: function () { newEta(r); } }));
+        actions.appendChild(el("button", { "class": "btn btn-primary", text: "📦 Got it", title: "Mark as received today", onclick: function () { gotIt(r); } }));
+      }
+      if (r.type !== "noeta") {
         actions.appendChild(el("button", { "class": "btn", text: "💤 3d", title: "Snooze 3 days", onclick: function () { snooze(r, 3); } }));
-        actions.appendChild(el("button", { "class": "btn btn-primary", text: "✓ Done", onclick: function () { markDone(r); } }));
+        if (r.type !== "promise") actions.appendChild(el("button", { "class": "btn btn-primary", text: "✓ Done", onclick: function () { markDone(r); } }));
       }
       list.appendChild(el("div", { "class": "td-item sev-" + r.severity }, [
         el("div", { "class": "td-item-icon", text: r.icon }),
@@ -167,7 +191,7 @@
     box.appendChild(row("Ordered", wk.ordered + " parcels · " + money(wk.spend) + (wk.cap ? " / " + money(wk.cap) : ""), wk.overCap));
     box.appendChild(row("Landed (delivered)", String(wk.landed)));
     box.appendChild(row("Stuck", String(wk.stuck), wk.stuck > 0));
-    box.appendChild(row("Missing order date", String(wk.undated)));
+    box.appendChild(row("No estimated date", String(wk.undated)));
     var reviewed = meta.reviewedWeeks.indexOf(wk.start) >= 0;
     var isRevDay = new Date().getDay() === 0 || new Date().getDay() === 1;
     box.appendChild(el("div", { "class": "imp-actions" }, [
@@ -184,7 +208,7 @@
     var fields = [
       ["holdDays", "Pickup hold (days)", "How long a branch keeps a parcel after it arrives"],
       ["stuckDays", "Stuck after (days)", "Pending/Scheduled this long after ordering = stuck"],
-      ["promiseLeadDays", "Promise heads-up (days)", "Warn this many days before a promised delivery date"],
+      ["promiseLeadDays", "Estimate heads-up (days)", "Remind this many days before the estimated delivery date (and when the window opens)"],
       ["reorderLeadDays", "Reorder heads-up (days)", "Warn this many days before a consumable runs out"],
       ["weeklyCap", "Weekly spend cap (RM)", "0 = no cap"]
     ];

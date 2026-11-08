@@ -114,7 +114,8 @@
       "for": oneOf(rec["for"], M.FOR_OPTIONS, "Aisyah"),
       boughtBy: oneOf(rec.boughtBy, M.BOUGHT_OPTIONS, "San"),
       ordered: M.parseDateLoose(rec.order_date || rec.ordered),
-      expected: M.parseDateLoose(rec.promise_date || rec.expected),
+      expected: M.parseDateLoose(rec.estimated_from || rec.expected || rec.promise_date),
+      expectedEnd: latestOf(M.parseDateLoose(rec.estimated_to || rec.expectedEnd), M.parseDateLoose(rec.promise_date)),
       delivered: M.parseDateLoose(rec.delivered_date || rec.delivered),
       arrived: "",
       reorderDays: Math.max(0, Math.round(num(rec.reorderDays, 0))),
@@ -145,6 +146,8 @@
     return draft;
   }
 
+  function latestOf(a, b) { return a && b ? (a > b ? a : b) : (a || b || ""); }
+
   /** Full parcel object (matches the shape saved in localStorage). Optional fields only when set. */
   function toParcel(draft, id) {
     var p = {
@@ -153,7 +156,9 @@
       pickupCode: draft.pickupCode || "", nujCost: draft.nujCost || 0, status: draft.status,
       remark: draft.remark || draft.platform, "for": draft["for"], boughtBy: draft.boughtBy
     };
-    ["ordered", "expected", "arrived", "delivered"].forEach(function (k) { if (draft[k]) p[k] = draft[k]; });
+    ["ordered", "expected", "expectedEnd", "arrived", "delivered"].forEach(function (k) { if (draft[k]) p[k] = draft[k]; });
+    if (p.expectedEnd && p.expected && p.expectedEnd <= p.expected) delete p.expectedEnd;
+    if (p.expectedEnd && !p.expected) { p.expected = p.expectedEnd; delete p.expectedEnd; }
     if (draft.reorderDays > 0) p.reorderDays = draft.reorderDays;
     if (p.status === "Delivered" && !p.delivered && draft.ordered) { /* leave blank; never guess a delivery date */ }
     return p;

@@ -35,6 +35,14 @@ t("sanitize removes receiver, validates buyer/dates/reorder", () => {
   assert.strictEqual(p.reorderDays, 30);
   assert.strictEqual(M.sanitizeParcel(p), false, "idempotent");
 });
+t("estimate window is kept in order and collapsed when redundant", () => {
+  const swap = { expected: "2026-11-18", expectedEnd: "2026-11-12" }; M.sanitizeParcel(swap);
+  assert.deepStrictEqual([swap.expected, swap.expectedEnd], ["2026-11-12", "2026-11-18"]);
+  const same = { expected: "2026-11-12", expectedEnd: "2026-11-12" }; M.sanitizeParcel(same);
+  assert.ok(!("expectedEnd" in same));
+  const onlyEnd = { expectedEnd: "2026-11-12" }; M.sanitizeParcel(onlyEnd);
+  assert.deepStrictEqual(onlyEnd, { expected: "2026-11-12" });
+});
 t("sanitize leaves clean parcels alone and does not invent a buyer", () => {
   const p = { id: 2, for: "Aisyah", status: "Pending" };
   assert.strictEqual(M.sanitizeParcel(p), false);

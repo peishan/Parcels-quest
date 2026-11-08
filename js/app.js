@@ -191,7 +191,8 @@ function normalizeCSVRow(row) {
     for: get(["For"]).trim() || "San",
     boughtBy: get(["Bought By", "BoughtBy", "Purchased By"]).trim(),
     ordered: get(["Ordered", "Order Date"]).trim(),
-    expected: get(["Expected", "Promise Date"]).trim(),
+    expected: get(["Expected", "Est Delivery From", "Promise Date"]).trim(),
+    expectedEnd: get(["Expected To", "Est Delivery To"]).trim(),
     arrived: get(["Arrived"]).trim(),
     delivered: get(["Delivered Date", "Delivered On"]).trim(),
     reorderDays: get(["Reorder Days"]).trim()
@@ -222,11 +223,11 @@ function handleFileSelect(e) {
 
 function exportCSV() {
   if (parcels.length === 0) { showToast("No parcels to export", "warning"); return; }
-  var headers = ["#","Platform","Tracking","Category","Item Description","Qty","Price (RM)","Pickup Code","NUJ Cost","Status","Remark","For","Bought By","Ordered","Expected","Arrived","Delivered Date","Reorder Days"];
+  var headers = ["#","Platform","Tracking","Category","Item Description","Qty","Price (RM)","Pickup Code","NUJ Cost","Status","Remark","For","Bought By","Ordered","Est Delivery From","Est Delivery To","Arrived","Delivered Date","Reorder Days"];
   function escape(s) { s = String(s || ""); if (s.indexOf(",") >= 0 || s.indexOf('"') >= 0 || s.indexOf("\n") >= 0) return '"' + s.replace(/"/g, '""') + '"'; return s; }
   var csv = headers.map(escape).join(",") + "\n";
   parcels.forEach(function(p) {
-    var row = [p.id, p.platform, p.tracking, p.category, p.item, p.qty, p.price, p.pickupCode, p.nujCost, p.status, p.remark, p.for, p.boughtBy, p.ordered, p.expected, p.arrived, p.delivered, p.reorderDays];
+    var row = [p.id, p.platform, p.tracking, p.category, p.item, p.qty, p.price, p.pickupCode, p.nujCost, p.status, p.remark, p.for, p.boughtBy, p.ordered, p.expected, p.expectedEnd, p.arrived, p.delivered, p.reorderDays];
     csv += row.map(escape).join(",") + "\n";
   });
   var blob = new Blob([csv], { type: "text/csv" });
@@ -1275,7 +1276,7 @@ function openModal(id) {
     '<div class="modal-row"><span class="modal-label">For</span><span class="modal-value">' + p.for + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Purchased by</span><span class="modal-value">' + (p.boughtBy || '-') + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Ordered</span><span class="modal-value">' + (p.ordered || '-') + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Promised by</span><span class="modal-value">' + (p.expected || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Estimated delivery</span><span class="modal-value">' + (p.expected ? p.expected + (p.expectedEnd ? ' to ' + p.expectedEnd : '') : '-') + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Arrived at branch</span><span class="modal-value">' + (p.arrived || '-') + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Delivered</span><span class="modal-value">' + (p.delivered || '-') + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Reorder after</span><span class="modal-value">' + (p.reorderDays ? p.reorderDays + ' days' : '-') + '</span></div>';
@@ -1341,14 +1342,14 @@ function deleteId(id) {
 }
 // Fields added with the reminders update: purchased-by, dates, reorder interval.
 function setParcelFormExtras(p) {
-  var ids = { apOrdered: "ordered", apExpected: "expected", apArrived: "arrived", apDelivered: "delivered", apReorder: "reorderDays" };
+  var ids = { apOrdered: "ordered", apExpected: "expected", apExpectedEnd: "expectedEnd", apArrived: "arrived", apDelivered: "delivered", apReorder: "reorderDays" };
   Object.keys(ids).forEach(function(id){ var el = document.getElementById(id); if (el) el.value = (p && p[ids[id]]) || ""; });
   document.querySelectorAll('input[name="apBought"]').forEach(function(r){ r.checked = r.value === ((p && p.boughtBy) || "San"); });
 }
 function readParcelFormExtras() {
   function v(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
   var b = document.querySelector('input[name="apBought"]:checked');
-  return { boughtBy: b ? b.value : "San", ordered: v("apOrdered"), expected: v("apExpected"), arrived: v("apArrived"),
+  return { boughtBy: b ? b.value : "San", ordered: v("apOrdered"), expected: v("apExpected"), expectedEnd: v("apExpectedEnd"), arrived: v("apArrived"),
            delivered: v("apDelivered"), reorderDays: parseInt(v("apReorder")) || 0 };
 }
 function addParcel() {
@@ -1431,7 +1432,7 @@ function submitAddParcel() {
       parcels[idx].nujCost = nujCost;
       parcels[idx].status = status;
       parcels[idx].remark = remark;
-      ["boughtBy","ordered","expected","arrived","delivered","reorderDays"].forEach(function(k){
+      ["boughtBy","ordered","expected","expectedEnd","arrived","delivered","reorderDays"].forEach(function(k){
         if (extras[k]) parcels[idx][k] = extras[k]; else delete parcels[idx][k];
       });
       saveData(); renderAll();
@@ -1456,7 +1457,7 @@ function submitAddParcel() {
       category: category, item: item, qty: qty, price: price,
       pickupCode: pickupCode, nujCost: nujCost, status: status, remark: remark, for: forWho
     });
-    ["boughtBy","ordered","expected","arrived","delivered","reorderDays"].forEach(function(k){
+    ["boughtBy","ordered","expected","expectedEnd","arrived","delivered","reorderDays"].forEach(function(k){
       if (extras[k]) parcels[parcels.length - 1][k] = extras[k];
     });
     saveData(); renderAll();
