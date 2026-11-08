@@ -63,6 +63,11 @@ t("draft: TikTok receipt example, duplicate detection", () => {
   const p = P.toParcel(d, 99);
   assert.ok(!("receiver" in p) && p.ordered === "2026-10-24" && p.boughtBy === "KW Liang" && !("arrived" in p));
 });
+t("Shopee Direct and Temu are accepted platforms and keep an unrecognised tracking format as typed", () => {
+  const d = P.makeDraft({ tracking: "TEMU-ABC123XYZ", platform: "Temu", item: "Phone case" }, []);
+  assert.strictEqual(d.platform, "Temu"); assert.strictEqual(d.tracking, "TEMU-ABC123XYZ");
+  assert.strictEqual(P.makeDraft({ tracking: "SPXMY123456789012", platform: "Shopee Direct" }, []).platform, "Shopee Direct");
+});
 t("unknown buyer/for fall back to defaults (never invented names)", () => {
   const d = P.makeDraft({ tracking: "680053989206318", boughtBy: "someone", "for": "x" }, []);
   assert.strictEqual(d.boughtBy, "San"); assert.strictEqual(d["for"], "Aisyah");

@@ -146,7 +146,7 @@
 <div style="display:flex;align-items:center;gap:6px;"><span class="pickup-code pickup-s">S-XXXX</span> <span>→ 🏠 Sengkurong branch (San's area)</span></div>
 </div>
 <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border);font-size:0.78rem;color:var(--text-secondary);">
-💡 Parcels can come from any platform (Shopee, Lazada, TikTok) and will be sent to whichever branch is closer to the person it is for.
+💡 Parcels can come from any platform (Shopee, Shopee Direct, Lazada, TikTok, Temu) and will be sent to whichever branch is closer to the person it is for.
 </div>
 </div><div class="stats-grid" id="pickupStats">
 <div class="stat-card active" data-pfilter="all" onclick="setPickupFilter('all')"><div class="stat-icon">🔑</div><div class="stat-value" id="puTotal">0</div><div class="stat-label">All Codes</div></div>
@@ -206,7 +206,7 @@
 <div class="card">
 <div class="card-header"><div class="card-title">📋 Parcel Details</div><div class="card-subtitle">Enter info to get an estimate</div></div>
 <div class="estimator-form">
-<div class="form-group"><label>Platform</label><select id="estPlatform" onchange="calculateEstimate()"><option value="Shopee">Shopee</option><option value="Lazada">Lazada</option><option value="TikTok">TikTok</option></select></div>
+<div class="form-group"><label>Platform</label><select id="estPlatform" onchange="calculateEstimate()"><option value="Shopee">Shopee</option><option value="Lazada">Lazada</option><option value="TikTok">TikTok</option><option value="Shopee Direct">Shopee Direct</option><option value="Temu">Temu</option></select></div>
 <div class="form-group"><label>Quantity (items)</label><input type="number" id="estQty" value="5" min="1" oninput="calculateEstimate()"></div>
 <div class="form-group"><label>Category</label><select id="estCategory" onchange="calculateEstimate()"><option value="Beauty Care">Beauty Care</option><option value="Health Care">Health Care</option><option value="Fashion Acc">Fashion Acc</option><option value="Elec. Appl.">Elec. Appl.</option><option value="Garment">Garment</option><option value="Others">Others</option></select></div>
 <div class="form-group"><label>Price (RM)</label><input type="number" id="estPrice" value="100" min="0" oninput="calculateEstimate()"></div>
@@ -394,7 +394,7 @@
 <div class="card">
 <div class="card-header"><div class="card-title">ℹ️ About</div></div>
 <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;">
-<p><strong>Parcel Quest v2.0</strong> — Gamified parcel tracker for Shopee, Lazada, and TikTok.</p>
+<p><strong>Parcel Quest v2.0</strong> — Gamified parcel tracker for Shopee, Shopee Direct, Lazada, TikTok and Temu.</p>
 <p>Built for NUJ courier tracking (Limbang to Brunei) with pickup code management.</p>
 <p>Features: CSV import/export, price tracking, NUJ cost estimation, side quests, achievements.</p>
 <p style="margin-top:8px;">💡 Tip: Bookmark this page to your home screen for app-like experience.</p>
@@ -419,7 +419,7 @@
 <input type="file" id="impFile" accept="image/*,application/pdf" multiple hidden onchange="importFilesChosen(this.files);this.value=''">
 <div style="font-size:1.6rem;">📸</div>
 <div><strong>Tap to choose</strong>, drop files, or paste an image</div>
-<div class="imp-hint">Shopee order pages, TikTok/Lazada receipts, PDFs. Include the tracking number if it is only in a chat caption.</div>
+<div class="imp-hint">Shopee / Shopee Direct / Temu order pages, TikTok and Lazada receipts, PDFs. Include the tracking number if it is only in a chat caption.</div>
 </label>
 <div id="impFileList" class="imp-files"></div>
 <textarea id="impNotes" rows="2" class="imp-text" placeholder="Optional: tracking numbers or notes (e.g. 680053989206318)"></textarea>
@@ -489,6 +489,8 @@
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="Shopee" checked style="accent-color:var(--accent);"> Shopee</label>
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="Lazada" style="accent-color:var(--accent);"> Lazada</label>
 <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="TikTok" style="accent-color:var(--accent);"> TikTok</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="Shopee Direct" style="accent-color:var(--accent);"> Shopee Direct</label>
+<label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:8px 14px;border-radius:8px;border:1px solid var(--border);background:var(--surface);font-size:0.85rem;"><input type="radio" name="apPlatform" value="Temu" style="accent-color:var(--accent);"> Temu</label>
 </div>
 </div>
 <div class="form-group"><label>Status</label>

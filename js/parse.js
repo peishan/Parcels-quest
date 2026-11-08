@@ -7,7 +7,7 @@
   var CATEGORIES = ["Beauty Care", "Health Care", "Fashion Acc", "Elec. Appl.", "Garment",
                     "Kitchen", "Home", "Printed", "Others"];
   var STATUSES = ["Pending", "Scheduled", "Delivered", "Refunded", "Cancelled", "Consolidated"];
-  var PLATFORMS = ["Shopee", "TikTok", "Lazada"];
+  var PLATFORMS = ["Shopee", "TikTok", "Lazada", "Shopee Direct", "Temu"];
 
   var ELLIPSIS = /(…|\.{2,})\s*$/;
 
@@ -128,7 +128,10 @@
     else {
       if (!t.complete) draft.warnings.push("Tracking looks cut off — paste the full number");
       if (t.cut) draft.warnings.push("Trimmed courier suffix (SPX…)");
-      if (rec.platform && t.platform && oneOf(rec.platform, PLATFORMS, null) !== t.platform) {
+      var given = oneOf(rec.platform, PLATFORMS, null);
+      // Shopee Direct parcels can carry Shopee/SPX-format numbers, so that pairing is not a mismatch.
+      var compatible = given === t.platform || (t.platform === "Shopee" && given === "Shopee Direct");
+      if (given && t.platform && !compatible) {
         draft.warnings.push("Platform changed to " + t.platform + " from tracking format");
         draft.platform = t.platform;
       }

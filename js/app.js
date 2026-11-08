@@ -50,7 +50,7 @@ const STATUS_COLORS = {
   "Delivered": "status-delivered", "Pending": "status-pending", "Scheduled": "status-scheduled",
   "Cancelled": "status-cancelled", "Refunded": "status-refunded", "Consolidated": "status-consolidated"
 };
-const PLATFORM_COLORS = { "Lazada": "#818cf8", "Shopee": "#fb923c", "TikTok": "#f472b6" };
+const PLATFORM_COLORS = { "Lazada": "#818cf8", "Shopee": "#fb923c", "TikTok": "#f472b6", "Shopee Direct": "#facc15", "Temu": "#2dd4bf" };
 const CATEGORY_COLORS = {
   "Health Care": "#ef4444", "Beauty Care": "#ec4899", "Elec. Appl.": "#3b82f6",
   "Fashion Acc": "#8b5cf6", "Others": "#6b7280", "Kitchen": "#f59e0b",
@@ -617,7 +617,7 @@ function renderPriceTracker() {
 function addPriceEntry() {
   var item = prompt("Item name:");
   if (!item) return;
-  var platform = prompt("Platform (Shopee/Lazada/TikTok):", "Shopee");
+  var platform = prompt("Platform (Shopee/Shopee Direct/Lazada/TikTok/Temu):", "Shopee");
   var price = parseFloat(prompt("Price (RM):", "0")) || 0;
   var date = prompt("Date (YYYY-MM-DD):", new Date().toISOString().slice(0,10));
   var notes = prompt("Notes (optional):", "");
