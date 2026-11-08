@@ -133,7 +133,10 @@
     "qty is the number of paid units (exclude free gifts). If one order has several different items, join them in `item` and sum qty.",
     "",
     "status: Delivered only if the screenshot shows the parcel was delivered; otherwise Pending.",
-    "category: choose the best match from the enum. receiver: the recipient name as shown (drop '(NUJ)').",
+    "category: choose the best match from the enum.",
+    "DATES: return ISO YYYY-MM-DD only when the year can be determined from the screenshot, otherwise empty. order_date = when the order was placed;",
+    "delivered_date = when it was delivered (e.g. 'Delivered on 7 Nov' with a timestamp 07-11-2026); promise_date = a courier/platform guaranteed delivery-by date (e.g. 'Guaranteed On-Time Delivery ... by 15-11-2026').",
+    "Do not output names or addresses of people.",
     "Never guess values you cannot see; use empty string or 0 and say so in notes."
   ].join("\n");
 
@@ -157,9 +160,9 @@
               list_price: { type: "number" },
               category: { type: "string", "enum": P.CATEGORIES },
               status: { type: "string", "enum": P.STATUSES },
-              receiver: { type: "string" },
-              order_date: { type: "string" },
-              delivered_date: { type: "string" },
+              order_date: { type: "string", description: "YYYY-MM-DD or empty" },
+              delivered_date: { type: "string", description: "YYYY-MM-DD or empty" },
+              promise_date: { type: "string", description: "YYYY-MM-DD or empty" },
               notes: { type: "string" }
             },
             required: ["tracking_raw", "platform", "item", "qty", "amount_paid", "category", "status"]
@@ -209,7 +212,9 @@
     var notes = [rec.notes, rec.order_id ? "Order " + rec.order_id : ""].filter(Boolean).join(" · ");
     var d = P.makeDraft({
       tracking_raw: rec.tracking_raw, platform: rec.platform, item: rec.item, qty: rec.qty,
-      price: rec.amount_paid, category: rec.category, status: rec.status, receiver: rec.receiver
+      price: rec.amount_paid, category: rec.category, status: rec.status,
+      order_date: rec.order_date, delivered_date: rec.delivered_date, promise_date: rec.promise_date,
+      boughtBy: lsGet("parcelQuest_defaultBuyer") || "San", "for": lsGet("parcelQuest_defaultFor") || "Aisyah"
     }, parcels);
     if (notes) d.aiNotes = notes;
     return d;
@@ -224,6 +229,7 @@
       if (!prev.price && d.price) prev.price = d.price;
       if (prev.item === "New Item" && d.item !== "New Item") prev.item = d.item;
       if (prev.status === "Pending" && d.status === "Delivered") prev.status = "Delivered";
+      ["ordered", "expected", "delivered"].forEach(function (k) { if (!prev[k] && d[k]) prev[k] = d[k]; });
     });
     return out;
   }
@@ -283,7 +289,8 @@
         var n = P.normalizeTracking(this.value);
         if (n) { d.tracking = n.tracking; if (n.platform) d.platform = n.platform; }
         var nd = P.makeDraft({ tracking: d.tracking, platform: d.platform, item: d.item, qty: d.qty, price: d.price,
-          category: d.category, status: d.status, receiver: d.receiver, "for": d["for"] }, parcels);
+          category: d.category, status: d.status, "for": d["for"], boughtBy: d.boughtBy, ordered: d.ordered, expected: d.expected,
+          delivered: d.delivered, reorderDays: d.reorderDays }, parcels);
         d.dupOf = nd.dupOf; d.warnings = nd.warnings; d.include = !d.dupOf && !!d.tracking;
         renderPreview();
       });
@@ -306,8 +313,12 @@
         field("Paid (RM)", el("input", { type: "number", step: "0.01", value: d.price, oninput: function () { d.price = parseFloat(this.value) || 0; } })),
         field("Category", select(P.CATEGORIES, d.category, function () { d.category = this.value; })),
         field("Status", select(P.STATUSES, d.status, function () { d.status = this.value; })),
-        field("For", select(["Aisyah", "San"], d["for"], function () { d["for"] = this.value; })),
-        field("Receiver", el("input", { type: "text", value: d.receiver, oninput: function () { d.receiver = this.value; } }))
+        field("For", select(ParcelModel.FOR_OPTIONS, d["for"], function () { d["for"] = this.value; })),
+        field("Purchased by", select(ParcelModel.BOUGHT_OPTIONS, d.boughtBy, function () { d.boughtBy = this.value; })),
+        field("Ordered", el("input", { type: "date", value: d.ordered || "", onchange: function () { d.ordered = this.value; } })),
+        field("Promised by", el("input", { type: "date", value: d.expected || "", onchange: function () { d.expected = this.value; } })),
+        field("Delivered", el("input", { type: "date", value: d.delivered || "", onchange: function () { d.delivered = this.value; } })),
+        field("Reorder after (days)", el("input", { type: "number", min: 0, value: d.reorderDays || "", placeholder: "optional", oninput: function () { d.reorderDays = Math.max(0, parseInt(this.value) || 0); } }))
       ]);
       var row = el("div", { "class": "imp-row" + (d.dupOf ? " is-dup" : "") }, [head, grid]);
       d.warnings.concat(d.aiNotes ? ["ℹ️ " + d.aiNotes] : []).forEach(function (w) {
@@ -333,6 +344,7 @@
         if (cur && d.dupAction !== "skip") {
           cur.status = d.status;
           if (!cur.price && d.price) cur.price = d.price;
+          ["ordered", "expected", "delivered"].forEach(function (k) { if (!cur[k] && d[k]) cur[k] = d[k]; });
           updated++;
         }
         return;
@@ -378,4 +390,7 @@
     });
     loadAiSettings();
   });
+
+  // Runs here (not in app.js) because app.js loads first and this function lives in this file.
+  try { if (typeof parcels !== "undefined") fixTrackingTails(true); } catch (e) { console.error("fixTrackingTails failed:", e); }
 })();

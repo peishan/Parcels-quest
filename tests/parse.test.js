@@ -36,27 +36,36 @@ t("extract from messy pasted text", () => {
 t("SPXMY is not also extracted as MY…", () => {
   assert.deepStrictEqual(P.extractTrackingNumbers("SPXMY069928741046").map(x => x.tracking), ["SPXMY069928741046"]);
 });
-t("receiver cleanup", () => {
-  assert.strictEqual(P.cleanReceiver("Goh Pau San (NUJ)"), "Goh Pau San");
-  assert.strictEqual(P.cleanReceiver("GOH PAU SAN"), "Goh Pau San");
-});
 t("draft: Shopee screenshot example", () => {
   const d = P.makeDraft({ tracking: "MY265518180161USPXLM102...", platform: "Shopee",
     item: "PUTEH EDITION LUXE 1KG - PE LUXE 1 BOTOL", qty: 10, price: "RM504.60",
-    category: "Health Care", status: "Delivered", receiver: "Goh Pau San (NUJ)" }, []);
+    category: "Health Care", status: "Delivered", boughtBy: "San", order_date: "", delivered_date: "07-11-2026 14:15", promise_date: "15-11-2026" }, []);
   assert.strictEqual(d.tracking, "MY265518180161U");
   assert.strictEqual(d.price, 504.6);
   assert.strictEqual(d.status, "Delivered");
+  assert.strictEqual(d.delivered, "2026-11-07");
+  assert.strictEqual(d.expected, "2026-11-15");
+  assert.strictEqual(d.boughtBy, "San");
+  assert.ok(!("receiver" in d));
   assert.strictEqual(d.dupOf, null);
 });
 t("draft: TikTok receipt example, duplicate detection", () => {
   const existing = [{ id: 7, tracking: "680053989206318" }];
   const d = P.makeDraft({ tracking: "680053989206318", item: "5pek Latte Hazelnut (30hari) HELLOFIT Coffee",
-    qty: 2, price: 236.3, receiver: "goh Paul sa" }, existing);
+    qty: 2, price: 236.3, boughtBy: "KW Liang", order_date: "24 October 2026, 12:17", "for": "Joel" }, existing);
   assert.strictEqual(d.platform, "TikTok");
   assert.strictEqual(d.category, "Health Care");
   assert.strictEqual(d.status, "Pending");
   assert.strictEqual(d.dupOf, 7);
+  assert.strictEqual(d.ordered, "2026-10-24");
+  assert.strictEqual(d.boughtBy, "KW Liang");
+  assert.strictEqual(d["for"], "Joel");
+  const p = P.toParcel(d, 99);
+  assert.ok(!("receiver" in p) && p.ordered === "2026-10-24" && p.boughtBy === "KW Liang" && !("arrived" in p));
+});
+t("unknown buyer/for fall back to defaults (never invented names)", () => {
+  const d = P.makeDraft({ tracking: "680053989206318", boughtBy: "someone", "for": "x" }, []);
+  assert.strictEqual(d.boughtBy, "San"); assert.strictEqual(d["for"], "Aisyah");
 });
 t("SPXMY and MY…U are never treated as the same parcel", () => {
   const d = P.makeDraft({ tracking: "MY069928741046" }, [{ id: 1, tracking: "SPXMY069928741046" }]);

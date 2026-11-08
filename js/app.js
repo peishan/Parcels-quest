@@ -70,6 +70,7 @@ function showSection(name) {
   if (name === "nuj") { calculateEstimate(); renderNUJHistory(); }
   if (name === "settings") renderSettings();
   if (name === "dashboard") renderDashboard();
+  if (name === "today" && window.renderToday) renderToday();
   window.scrollTo(0,0);
 }
 function toggleSidebar() { document.getElementById("sidebar").classList.toggle("open"); }
@@ -96,6 +97,7 @@ function calcXP() {
   });
   return xp;
 }
+var levelBaselined = false; // first run just establishes the level, so a fresh browser does not pop "Level up!"
 function updateLevel() {
   var newTotalXP = calcXP();
   var oldLevel = player.level;
@@ -127,7 +129,8 @@ function updateLevel() {
   if (elTotal) elTotal.textContent = newTotalXP.toLocaleString();
   var elSide = document.getElementById("sidebarLevel");
   if (elSide) elSide.textContent = "Lv. " + lvl + " " + title.title;
-  if (lvl > oldLevel) showLevelup(lvl, title.title);
+  if (lvl > oldLevel && levelBaselined) showLevelup(lvl, title.title);
+  levelBaselined = true;
 }
 
 function triggerImport() { document.getElementById("csvInput").click(); }
@@ -177,7 +180,6 @@ function normalizeCSVRow(row) {
   return {
     id: parcels.length > 0 ? Math.max.apply(null, parcels.map(function(p){return p.id})) + 1 : 1,
     platform: platform, tracking: tracking,
-    receiver: get(["Receiver"]).trim() || "GOH PAU SAN",
     category: get(["Category"]).trim() || "Others",
     item: get(["Item Description", "Item"]).trim() || "Unknown Item",
     qty: parseInt(get(["Qty", "Quantity"])) || 1,
@@ -186,7 +188,13 @@ function normalizeCSVRow(row) {
     nujCost: parseFloat(get(["NUJ Cost", "NUJCost"])) || 0,
     status: get(["Status"]).trim() || "Pending",
     remark: get(["Remark"]).trim(),
-    for: get(["For"]).trim() || "San"
+    for: get(["For"]).trim() || "San",
+    boughtBy: get(["Bought By", "BoughtBy", "Purchased By"]).trim(),
+    ordered: get(["Ordered", "Order Date"]).trim(),
+    expected: get(["Expected", "Promise Date"]).trim(),
+    arrived: get(["Arrived"]).trim(),
+    delivered: get(["Delivered Date", "Delivered On"]).trim(),
+    reorderDays: get(["Reorder Days"]).trim()
   };
 }
 function handleFileSelect(e) {
@@ -214,11 +222,11 @@ function handleFileSelect(e) {
 
 function exportCSV() {
   if (parcels.length === 0) { showToast("No parcels to export", "warning"); return; }
-  var headers = ["#","Platform","Tracking","Receiver","Category","Item Description","Qty","Price (RM)","Pickup Code","NUJ Cost","Status","Remark","For"];
+  var headers = ["#","Platform","Tracking","Category","Item Description","Qty","Price (RM)","Pickup Code","NUJ Cost","Status","Remark","For","Bought By","Ordered","Expected","Arrived","Delivered Date","Reorder Days"];
   function escape(s) { s = String(s || ""); if (s.indexOf(",") >= 0 || s.indexOf('"') >= 0 || s.indexOf("\n") >= 0) return '"' + s.replace(/"/g, '""') + '"'; return s; }
   var csv = headers.map(escape).join(",") + "\n";
   parcels.forEach(function(p) {
-    var row = [p.id, p.platform, p.tracking, p.receiver, p.category, p.item, p.qty, p.price, p.pickupCode, p.nujCost, p.status, p.remark, p.for];
+    var row = [p.id, p.platform, p.tracking, p.category, p.item, p.qty, p.price, p.pickupCode, p.nujCost, p.status, p.remark, p.for, p.boughtBy, p.ordered, p.expected, p.arrived, p.delivered, p.reorderDays];
     csv += row.map(escape).join(",") + "\n";
   });
   var blob = new Blob([csv], { type: "text/csv" });
@@ -263,6 +271,7 @@ function dedupParcelIds() {
 }
 
 function saveData() {
+  try { ParcelModel.sanitizeParcels(parcels); } catch(e) {}
   try { localStorage.setItem("parcelQuest_data", JSON.stringify(parcels)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_prices", JSON.stringify(priceHistory)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_player", JSON.stringify(player)); } catch(e) {}
@@ -379,13 +388,16 @@ function getFiltered() {
   var platform = document.getElementById("platformFilter").value;
   var category = document.getElementById("categoryFilter").value;
   var forWho = document.getElementById("forFilter").value;
+  var boughtEl = document.getElementById("boughtFilter");
+  var boughtBy = boughtEl ? boughtEl.value : "";
   return parcels.filter(function(p) {
     if (currentFilter !== "all" && p.status !== currentFilter) return false;
     if (platform && p.platform !== platform) return false;
     if (category && p.category !== category) return false;
     if (forWho && p.for !== forWho) return false;
+    if (boughtBy && (p.boughtBy || "") !== (boughtBy === "(not set)" ? "" : boughtBy)) return false;
     if (search) {
-      var hay = (p.tracking + " " + p.item + " " + p.receiver + " " + p.platform + " " + p.status + " " + p.for).toLowerCase();
+      var hay = (p.tracking + " " + p.item + " " + p.platform + " " + p.status + " " + p.for + " " + (p.boughtBy || "")).toLowerCase();
       return hay.indexOf(search) >= 0;
     }
     return true;
@@ -420,10 +432,11 @@ function renderParcels() {
 
   var platforms = [...new Set(parcels.map(function(p){return p.platform}))].sort();
   var categories = [...new Set(parcels.map(function(p){return p.category}))].sort();
-  var receivers = [...new Set(parcels.map(function(p){return p.for}))].sort();
+  var receivers = ParcelModel.FOR_OPTIONS.slice();
   updateSelect("platformFilter", platforms, "All Platforms");
   updateSelect("categoryFilter", categories, "All Categories");
-  updateSelect("forFilter", receivers, "All Receivers");
+  updateSelect("forFilter", receivers, "For: everyone");
+  if (document.getElementById("boughtFilter")) updateSelect("boughtFilter", ParcelModel.BOUGHT_OPTIONS.concat(["(not set)"]), "Bought by: anyone");
 
   var filtered = getFiltered();
   var totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
@@ -533,6 +546,8 @@ function renderPickup() {
       branch = "📍 Lambak (expected)";
     } else if (p.for === "San") {
       branch = "📍 Sengkurong (expected)";
+    } else if (p.for === "Joel") {
+      branch = "📍 Branch not set";
     }
     return '<tr onclick="openModal(' + p.id + ')"><td class="col-id">' + p.id + '</td><td><span class="pickup-code ' + codeClass + '">' + (p.pickupCode || "—") + '</span></td><td>' + branch + '</td><td>' + p.platform + '</td><td><span class="tracking-num">' + p.tracking + '</span></td><td><div class="item-desc">' + p.item + '</div></td><td class="col-price">' + p.price.toFixed(2) + '</td><td><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td>' + p.for + '</td></tr>';
   }).join("");
@@ -1249,7 +1264,6 @@ function openModal(id) {
   content.innerHTML =
     '<div class="modal-row"><span class="modal-label">Platform</span><span class="modal-value">' + p.platform + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Tracking</span><span class="modal-value" style="font-family:monospace;font-size:0.8rem;">' + p.tracking + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">Receiver</span><span class="modal-value">' + p.receiver + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Category</span><span class="modal-value">' + p.category + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Item</span><span class="modal-value">' + p.item + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Quantity</span><span class="modal-value">' + p.qty + '</span></div>' +
@@ -1258,7 +1272,13 @@ function openModal(id) {
     '<div class="modal-row"><span class="modal-label">NUJ Cost</span><span class="modal-value">' + (p.nujCost ? p.nujCost.toFixed(2) : '-') + '</span></div>' +
     '<div class="modal-row"><span class="modal-label">Status</span><span class="modal-value"><span class="status-badge ' + (STATUS_COLORS[p.status]||'status-pending') + '">' + p.status + '</span></span></div>' +
     '<div class="modal-row"><span class="modal-label">Remark</span><span class="modal-value">' + (p.remark || '-') + '</span></div>' +
-    '<div class="modal-row"><span class="modal-label">For</span><span class="modal-value">' + p.for + '</span></div>';
+    '<div class="modal-row"><span class="modal-label">For</span><span class="modal-value">' + p.for + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Purchased by</span><span class="modal-value">' + (p.boughtBy || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Ordered</span><span class="modal-value">' + (p.ordered || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Promised by</span><span class="modal-value">' + (p.expected || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Arrived at branch</span><span class="modal-value">' + (p.arrived || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Delivered</span><span class="modal-value">' + (p.delivered || '-') + '</span></div>' +
+    '<div class="modal-row"><span class="modal-label">Reorder after</span><span class="modal-value">' + (p.reorderDays ? p.reorderDays + ' days' : '-') + '</span></div>';
   document.getElementById("modal").classList.add("show");
 }
 function closeModal() { document.getElementById("modal").classList.remove("show"); currentModalId = null; }
@@ -1268,6 +1288,7 @@ function cycleStatus() {
   if (!p) return;
   var idx = STATUS_CYCLE.indexOf(p.status);
   p.status = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  if (p.status === "Delivered" && !p.delivered) p.delivered = ParcelModel.todayISO();
   saveData(); renderAll(); openModal(currentModalId);
   showToast("Status updated to " + p.status, "success");
 }
@@ -1276,6 +1297,7 @@ function cycleStatusId(id) {
   if (!p) return;
   var idx = STATUS_CYCLE.indexOf(p.status);
   p.status = STATUS_CYCLE[(idx + 1) % STATUS_CYCLE.length];
+  if (p.status === "Delivered" && !p.delivered) p.delivered = ParcelModel.todayISO();
   saveData(); renderAll();
   showToast("#" + id + " → " + p.status, "success");
 }
@@ -1293,8 +1315,6 @@ function editCurrent() {
   closeModal();
   // Populate form
   document.getElementById("apTracking").value = p.tracking;
-  document.getElementById("apReceiver").value = p.receiver;
-  document.getElementById("apPhone").value = "6738360189";
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === p.for;});
   var catChip = document.querySelector('.cat-chip[data-cat="' + p.category + '"]');
   if (catChip) selectCat(catChip);
@@ -1307,6 +1327,7 @@ function editCurrent() {
   document.getElementById("apStatus").value = p.status;
   document.getElementById("apPickupCode").value = p.pickupCode || "";
   document.getElementById("apNujCost").value = p.nujCost || 0;
+  setParcelFormExtras(p);
   // Show edit modal
   document.getElementById("addParcelModal").classList.add("show");
   document.getElementById("addParcelModal").dataset.editId = String(editId);
@@ -1317,6 +1338,18 @@ function deleteId(id) {
   parcels = parcels.filter(function(p){return p.id !== id;});
   saveData(); renderAll();
   showToast("Parcel #" + id + " deleted", "danger");
+}
+// Fields added with the reminders update: purchased-by, dates, reorder interval.
+function setParcelFormExtras(p) {
+  var ids = { apOrdered: "ordered", apExpected: "expected", apArrived: "arrived", apDelivered: "delivered", apReorder: "reorderDays" };
+  Object.keys(ids).forEach(function(id){ var el = document.getElementById(id); if (el) el.value = (p && p[ids[id]]) || ""; });
+  document.querySelectorAll('input[name="apBought"]').forEach(function(r){ r.checked = r.value === ((p && p.boughtBy) || "San"); });
+}
+function readParcelFormExtras() {
+  function v(id){ var el = document.getElementById(id); return el ? el.value.trim() : ""; }
+  var b = document.querySelector('input[name="apBought"]:checked');
+  return { boughtBy: b ? b.value : "San", ordered: v("apOrdered"), expected: v("apExpected"), arrived: v("apArrived"),
+           delivered: v("apDelivered"), reorderDays: parseInt(v("apReorder")) || 0 };
 }
 function addParcel() {
   document.getElementById("addParcelModal").classList.add("show");
@@ -1330,6 +1363,7 @@ function addParcel() {
   document.getElementById("apStatus").value = "Pending";
   document.getElementById("apPickupCode").value = "";
   document.getElementById("apNujCost").value = "0";
+  setParcelFormExtras(null);
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
@@ -1351,6 +1385,7 @@ function closeAddParcelModal() {
   document.getElementById("apStatus").value = "Pending";
   document.getElementById("apPickupCode").value = "";
   document.getElementById("apNujCost").value = "0";
+  setParcelFormExtras(null);
   document.querySelectorAll('input[name="apPlatform"]').forEach(function(r){r.checked = r.value === "Shopee";});
   document.querySelectorAll('input[name="apFor"]').forEach(function(r){r.checked = r.value === "Aisyah";});
   selectCat(document.querySelector('.cat-chip[data-cat="OTHERS"]'));
@@ -1374,7 +1409,7 @@ function submitAddParcel() {
   var price = parseFloat(document.getElementById("apPrice").value) || 0;
   var status = document.getElementById("apStatus").value;
   var remark = document.getElementById("apRemark").value.trim();
-  var receiver = document.getElementById("apReceiver").value.trim() || "GOH PAU SAN";
+  var extras = readParcelFormExtras();
 
   var editIdStr = document.getElementById("addParcelModal").dataset.editId;
   var editId = parseInt(editIdStr);
@@ -1396,7 +1431,9 @@ function submitAddParcel() {
       parcels[idx].nujCost = nujCost;
       parcels[idx].status = status;
       parcels[idx].remark = remark;
-      parcels[idx].receiver = receiver;
+      ["boughtBy","ordered","expected","arrived","delivered","reorderDays"].forEach(function(k){
+        if (extras[k]) parcels[idx][k] = extras[k]; else delete parcels[idx][k];
+      });
       saveData(); renderAll();
       showToast("💾 Parcel #" + editId + " updated!", "success");
     } else {
@@ -1415,9 +1452,12 @@ function submitAddParcel() {
     var pickupCode = document.getElementById("apPickupCode").value.trim();
     var nujCost = parseFloat(document.getElementById("apNujCost").value) || 0;
     parcels.push({
-      id: newId, platform: platform, tracking: tracking, receiver: receiver,
+      id: newId, platform: platform, tracking: tracking,
       category: category, item: item, qty: qty, price: price,
       pickupCode: pickupCode, nujCost: nujCost, status: status, remark: remark, for: forWho
+    });
+    ["boughtBy","ordered","expected","arrived","delivered","reorderDays"].forEach(function(k){
+      if (extras[k]) parcels[parcels.length - 1][k] = extras[k];
     });
     saveData(); renderAll();
     showToast("📦 Parcel #" + newId + " registered! +10 XP", "xp");
@@ -1427,7 +1467,7 @@ function submitAddParcel() {
 
 // ===================== SETTINGS =====================
 function exportJSON() {
-  var data = { parcels: parcels, priceHistory: priceHistory, player: player, exportedAt: new Date().toISOString() };
+  var data = { parcels: parcels, priceHistory: priceHistory, player: player, meta: (window.getParcelMeta ? getParcelMeta() : undefined), exportedAt: new Date().toISOString() };
   var json = JSON.stringify(data, null, 2);
   navigator.clipboard.writeText(json).then(function() {
     showToast("📋 JSON copied to clipboard! Paste on another device.", "success");
@@ -1500,7 +1540,7 @@ function uploadToGist() {
   var token = document.getElementById("gistToken").value.trim();
   if (!token) { showToast("❌ Enter your GitHub token first", "danger"); return; }
   var gistId = document.getElementById("gistId").value.trim();
-  var data = { parcels: parcels, priceHistory: priceHistory, player: player, exportedAt: new Date().toISOString() };
+  var data = { parcels: parcels, priceHistory: priceHistory, player: player, meta: (window.getParcelMeta ? getParcelMeta() : undefined), exportedAt: new Date().toISOString() };
   var json = JSON.stringify(data, null, 2);
 
   var url = gistId ? "https://api.github.com/gists/" + gistId : "https://api.github.com/gists";
@@ -1569,6 +1609,7 @@ function downloadFromGist() {
           }
           if (data.priceHistory) priceHistory = data.priceHistory;
           if (data.player) player = data.player;
+          if (data.meta && window.setParcelMeta) setParcelMeta(data.meta, false);
           saveData();
           renderAll();
           showToast("☁️ Downloaded " + data.parcels.length + " parcels from Gist!", "success");
@@ -1653,6 +1694,8 @@ function mergeFromGist() {
         player = data.player;
       }
 
+      if (data.meta && window.setParcelMeta) setParcelMeta(data.meta, true);
+
       // Fix any duplicate IDs after merge
       if (dedupParcelIds()) {
         showToast("🔧 Fixed duplicate IDs after Gist merge", "success");
@@ -1692,6 +1735,7 @@ function autoSyncFromGist() {
           }
           if (data.priceHistory && Array.isArray(data.priceHistory)) priceHistory = data.priceHistory;
           if (data.player && typeof data.player === "object") player = data.player;
+          if (data.meta && window.setParcelMeta) setParcelMeta(data.meta, false);
           saveData();
           renderAll();
           showToast("☁️ Auto-synced " + data.parcels.length + " parcels from Gist", "success");
@@ -1824,6 +1868,7 @@ function loadTheme() {
 }
 
 function renderAll() {
+  if (window.renderToday) renderToday();
   renderDashboard();
   renderParcels();
   renderPickup();
@@ -1864,12 +1909,10 @@ function updateSaveIndicator() {
 }
 
 // Save before page refresh/close
-window.addEventListener("beforeunload", function(e) {
+window.addEventListener("beforeunload", function() {
+  // saveData() writes to localStorage synchronously, so nothing is lost on refresh/close and no
+  // "unsaved data" prompt is needed (it used to fire every time, even right after saving).
   saveData();
-  // Always warn before leaving — protects mobile edits from accidental refresh/close
-  e.preventDefault();
-  e.returnValue = "You have unsaved parcel data. Are you sure you want to leave?";
-  return e.returnValue;
 });
 
 // Also save when page becomes hidden (switching apps on mobile)
@@ -1893,14 +1936,14 @@ try {
   player = { level: 1, xp: 0, totalXP: 0, gameXP: 0 };
 }
 try {
+  if (ParcelModel.sanitizeParcels(parcels)) saveData();
+} catch(e) { console.error("sanitize failed:", e); }
+try {
   loadTheme();
 } catch(e) { console.error("loadTheme failed:", e); }
 try {
   renderAll();
 } catch(e) { console.error("renderAll failed:", e); }
-try {
-  if (window.fixTrackingTails) fixTrackingTails(true);
-} catch(e) { console.error("fixTrackingTails failed:", e); }
 try {
   startAutoSave();
 } catch(e) { console.error("startAutoSave failed:", e); }

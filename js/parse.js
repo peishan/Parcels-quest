@@ -3,6 +3,7 @@
 (function (root) {
   "use strict";
 
+  var M = root.ParcelModel || (typeof require === "function" ? require("./model.js") : null);
   var CATEGORIES = ["Beauty Care", "Health Care", "Fashion Acc", "Elec. Appl.", "Garment",
                     "Kitchen", "Home", "Printed", "Others"];
   var STATUSES = ["Pending", "Scheduled", "Delivered", "Refunded", "Cancelled", "Consolidated"];
@@ -83,15 +84,6 @@
     return "Others";
   }
 
-  function titleCase(s) {
-    return String(s || "").toLowerCase().replace(/\b[a-z]/g, function (c) { return c.toUpperCase(); });
-  }
-  /** "GOH PAU SAN", "goh Paul sa", "Goh Pau San (NUJ)" -> "Goh Pau San" style (NUJ suffix dropped). */
-  function cleanReceiver(name) {
-    var s = String(name || "").replace(/\(\s*nuj\s*\)/i, "").replace(/\s+/g, " ").trim();
-    return s ? titleCase(s) : "Goh Pau San";
-  }
-
   function oneOf(v, list, dflt) {
     var s = String(v == null ? "" : v).trim().toLowerCase();
     for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === s) return list[i];
@@ -119,8 +111,13 @@
       price: Math.round(num(rec.price, 0) * 100) / 100,
       category: oneOf(rec.category, CATEGORIES, null) || guessCategory(item),
       status: oneOf(rec.status, STATUSES, "Pending"),
-      receiver: cleanReceiver(rec.receiver),
-      "for": oneOf(rec["for"], ["Aisyah", "San"], "Aisyah"),
+      "for": oneOf(rec["for"], M.FOR_OPTIONS, "Aisyah"),
+      boughtBy: oneOf(rec.boughtBy, M.BOUGHT_OPTIONS, "San"),
+      ordered: M.parseDateLoose(rec.order_date || rec.ordered),
+      expected: M.parseDateLoose(rec.promise_date || rec.expected),
+      delivered: M.parseDateLoose(rec.delivered_date || rec.delivered),
+      arrived: "",
+      reorderDays: Math.max(0, Math.round(num(rec.reorderDays, 0))),
       pickupCode: String(rec.pickupCode || "").trim(),
       nujCost: num(rec.nujCost, 0),
       remark: String(rec.remark || platform).trim(),
@@ -145,14 +142,18 @@
     return draft;
   }
 
-  /** Full parcel object (matches the shape saved in localStorage). */
+  /** Full parcel object (matches the shape saved in localStorage). Optional fields only when set. */
   function toParcel(draft, id) {
-    return {
-      id: id, tracking: draft.tracking, platform: draft.platform, receiver: draft.receiver,
+    var p = {
+      id: id, tracking: draft.tracking, platform: draft.platform,
       category: draft.category, item: draft.item, qty: draft.qty, price: draft.price,
       pickupCode: draft.pickupCode || "", nujCost: draft.nujCost || 0, status: draft.status,
-      remark: draft.remark || draft.platform, "for": draft["for"]
+      remark: draft.remark || draft.platform, "for": draft["for"], boughtBy: draft.boughtBy
     };
+    ["ordered", "expected", "arrived", "delivered"].forEach(function (k) { if (draft[k]) p[k] = draft[k]; });
+    if (draft.reorderDays > 0) p.reorderDays = draft.reorderDays;
+    if (p.status === "Delivered" && !p.delivered && draft.ordered) { /* leave blank; never guess a delivery date */ }
+    return p;
   }
 
   /** Find rows whose stored tracking has a stray SPX tail / ellipsis. Returns [{id, from, to}]. */
@@ -171,7 +172,7 @@
   var api = {
     CATEGORIES: CATEGORIES, STATUSES: STATUSES, PLATFORMS: PLATFORMS,
     normalizeTracking: normalizeTracking, extractTrackingNumbers: extractTrackingNumbers,
-    guessCategory: guessCategory, cleanReceiver: cleanReceiver, makeDraft: makeDraft,
+    guessCategory: guessCategory, makeDraft: makeDraft,
     toParcel: toParcel, findTrackingFixes: findTrackingFixes
   };
   if (typeof module !== "undefined" && module.exports) module.exports = api;

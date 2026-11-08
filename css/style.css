@@ -381,3 +381,34 @@ body.light-mode ::-webkit-scrollbar-thumb {
 .imp-warn { font-size:0.74rem; color:var(--warning); margin-top:6px; }
 .imp-footer { position:sticky; bottom:-22px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:12px 0; background:var(--surface-raised); border-top:1px solid var(--border); margin-top:4px; }
 @media(max-width:640px) { .imp-grid { grid-template-columns:repeat(2,1fr); } .import-modal { max-height:94vh; } .settings-row .imp-input { width:150px; } }
+
+/* ===== Today page ===== */
+.td-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }
+.td-stat { display:flex; align-items:center; gap:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 16px; }
+.td-stat.ok { border-color:rgba(74,222,128,0.45); }
+.td-stat.warn { border-color:rgba(251,191,36,0.55); }
+.td-stat.bad { border-color:rgba(248,113,113,0.6); }
+.td-stat-icon { font-size:1.7rem; }
+.td-stat-value { font-size:1.35rem; font-weight:800; line-height:1.1; }
+.td-stat-label { font-size:0.74rem; color:var(--text-secondary); font-weight:600; }
+.td-stat-sub { font-size:0.7rem; color:var(--text-muted); margin-top:2px; }
+.td-item { display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--border); border-left-width:4px; border-radius:var(--radius-sm); background:var(--surface-raised); margin-bottom:8px; flex-wrap:wrap; }
+.td-item.sev-high { border-left-color:var(--danger); }
+.td-item.sev-med { border-left-color:var(--warning); }
+.td-item.sev-low { border-left-color:var(--info); }
+.td-item-icon { font-size:1.4rem; }
+.td-item-body { flex:1; min-width:200px; }
+.td-item-title { font-weight:700; font-size:0.9rem; }
+.td-item-detail { font-size:0.78rem; color:var(--text-secondary); margin-top:2px; }
+.td-chip { font-size:0.7rem; font-weight:800; padding:3px 9px; border-radius:100px; background:var(--surface); white-space:nowrap; }
+.td-chip.sev-high { color:var(--danger); } .td-chip.sev-med { color:var(--warning); } .td-chip.sev-low { color:var(--info); }
+.td-actions { display:flex; gap:6px; flex-wrap:wrap; }
+.td-two { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.td-sale { padding:10px 0; border-bottom:1px solid var(--border); }
+.td-sale:last-of-type { border-bottom:none; }
+.td-sale-head { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:6px; }
+.td-bar { height:8px; background:var(--surface); border-radius:100px; overflow:hidden; margin:6px 0 4px; }
+.td-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),#a855f7); border-radius:100px; }
+.td-bar-fill.over { background:var(--danger); }
+.td-bad { color:var(--danger); }
+@media(max-width:768px) { .td-stats { grid-template-columns:1fr; } .td-two { grid-template-columns:1fr; } .td-actions { width:100%; justify-content:flex-end; } }

@@ -1,5 +1,5 @@
-const CACHE = 'parcel-quest-v4-shell';
-const APP_SHELL = ['./', './index.html', './css/style.css', './js/parse.js', './js/seed.js', './js/app.js', './js/importer.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
+const CACHE = 'parcel-quest-v5-shell';
+const APP_SHELL = ['./', './index.html', './css/style.css', './js/model.js', './js/parse.js', './js/reminders.js', './js/seed.js', './js/app.js', './js/importer.js', './js/today.js', './manifest.webmanifest', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(APP_SHELL)).then(() => self.skipWaiting()));
 });
