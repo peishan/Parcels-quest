@@ -28,5 +28,25 @@
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape") { closeAddSheet(); $("sidebar").classList.remove("open"); }
   });
+
+  // ---- text size (per device) ----
+  var SIZES = ["sm", "md", "lg", "xl"], LABELS = { sm: "Small", md: "Normal", lg: "Large", xl: "Extra large" };
+  function currentSize() { return document.documentElement.getAttribute("data-text") || "md"; }
+  function syncTextButtons() {
+    var cur = currentSize(), bs = document.querySelectorAll(".text-size-btn");
+    for (var i = 0; i < bs.length; i++) bs[i].classList.toggle("active", bs[i].dataset.size === cur);
+  }
+  window.setTextSize = function (k) {
+    if (SIZES.indexOf(k) < 0) return;
+    if (k === "md") document.documentElement.removeAttribute("data-text"); else document.documentElement.setAttribute("data-text", k);
+    try { if (k === "md") localStorage.removeItem("parcelQuest_textSize"); else localStorage.setItem("parcelQuest_textSize", k); } catch (e) {}
+    syncTextButtons();
+    if (window.showToast) showToast("🔠 Text size: " + LABELS[k], "info");
+  };
+  window.bumpTextSize = function (d) {
+    var i = Math.max(0, Math.min(SIZES.length - 1, SIZES.indexOf(currentSize()) + d));
+    setTextSize(SIZES[i]);
+  };
+  syncTextButtons();
   syncTabs("today");
 })();

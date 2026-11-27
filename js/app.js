@@ -387,6 +387,26 @@ function renderDashboard() {
   renderAchievements("dashAchievements");
 }
 
+var sortMode = "newest";
+try { sortMode = localStorage.getItem("parcelQuest_sort") || "newest"; } catch(e) {}
+// Newest first by default: with hundreds of parcels the recent ones are what you usually want.
+function sortParcels(list) {
+  var out = list.slice();
+  if (sortMode === "oldest") out.sort(function(x, y) { return x.id - y.id; });
+  else if (sortMode === "price") out.sort(function(x, y) { return (y.price || 0) - (x.price || 0) || y.id - x.id; });
+  else if (sortMode === "eta") out.sort(function(x, y) {
+    var ax = x.expected || "", ay = y.expected || "";
+    if (ax && ay) return ax < ay ? -1 : ax > ay ? 1 : y.id - x.id;
+    if (ax) return -1; if (ay) return 1; return y.id - x.id;
+  });
+  else out.sort(function(x, y) { return y.id - x.id; });
+  return out;
+}
+function setSort(v) {
+  sortMode = v;
+  try { localStorage.setItem("parcelQuest_sort", v); } catch(e) {}
+  currentPage = 1; renderParcels();
+}
 function getFiltered() {
   var search = document.getElementById("searchInput").value.toLowerCase();
   var platform = document.getElementById("platformFilter").value;
@@ -394,7 +414,7 @@ function getFiltered() {
   var forWho = document.getElementById("forFilter").value;
   var boughtEl = document.getElementById("boughtFilter");
   var boughtBy = boughtEl ? boughtEl.value : "";
-  return parcels.filter(function(p) {
+  return sortParcels(parcels.filter(function(p) {
     if (currentFilter !== "all" && p.status !== currentFilter) return false;
     if (platform && p.platform !== platform) return false;
     if (category && p.category !== category) return false;
@@ -405,7 +425,7 @@ function getFiltered() {
       return hay.indexOf(search) >= 0;
     }
     return true;
-  });
+  }));
 }
 function renderParcels() {
   updateLevel();
@@ -449,8 +469,9 @@ function renderParcels() {
   var pageItems = filtered.slice(start, start + perPage);
   var elCount = document.getElementById("parcelTableCount");
   if (elCount) elCount.textContent = filtered.length + " of " + parcels.length + " parcels";
-  var elPage = document.getElementById("pageInfo");
-  if (elPage) elPage.textContent = "Page " + currentPage + " of " + totalPages;
+  renderPager(totalPages);
+  var ss = document.getElementById("sortFilter");
+  if (ss && ss.value !== sortMode) ss.value = sortMode;
 
   var tbody = document.getElementById("parcelTable");
   if (!tbody) return;
@@ -473,11 +494,30 @@ function updateSelect(id, items, defaultLabel) {
   if (oldVal && items.indexOf(oldVal) >= 0) sel.value = oldVal;
 }
 function setFilter(status) { currentFilter = status; currentPage = 1; renderParcels(); }
-function prevPage() { if (currentPage > 1) { currentPage--; renderParcels(); } }
-function nextPage() {
-  var filtered = getFiltered();
-  var totalPages = Math.ceil(filtered.length / perPage);
-  if (currentPage < totalPages) { currentPage++; renderParcels(); }
+function totalPageCount() { return Math.max(1, Math.ceil(getFiltered().length / perPage)); }
+// Going back from page 1 wraps to the last page (and forward from the last wraps to page 1), so the newest/oldest end is one tap away.
+function prevPage() { var t = totalPageCount(); currentPage = currentPage > 1 ? currentPage - 1 : t; renderParcels(); keepListInView(); }
+function nextPage() { var t = totalPageCount(); currentPage = currentPage < t ? currentPage + 1 : 1; renderParcels(); keepListInView(); }
+function goPage(n) {
+  var t = totalPageCount(); n = parseInt(n, 10);
+  currentPage = isNaN(n) ? 1 : Math.max(1, Math.min(t, n));
+  renderParcels(); keepListInView();
+}
+// After using the pager under the list, bring the top of the new page into view.
+function keepListInView() {
+  var el = document.querySelector("#section-parcels .table-container");
+  if (el && el.getBoundingClientRect().top < 0) el.scrollIntoView({ block: "start" });
+}
+function renderPager(totalPages) {
+  var opts = "";
+  for (var i = 1; i <= totalPages; i++) opts += '<option value="' + i + '"' + (i === currentPage ? " selected" : "") + ">Page " + i + "</option>";
+  var html = '<button class="pg-btn" onclick="goPage(1)" aria-label="First page"' + (currentPage === 1 ? " disabled" : "") + ">⏮</button>" +
+    '<button class="pg-btn" onclick="prevPage()" aria-label="Previous page"' + (totalPages === 1 ? " disabled" : "") + ">◀</button>" +
+    '<select class="pg-select" onchange="goPage(this.value)" aria-label="Jump to page">' + opts + "</select>" +
+    '<span class="pg-of">of ' + totalPages + "</span>" +
+    '<button class="pg-btn" onclick="nextPage()" aria-label="Next page"' + (totalPages === 1 ? " disabled" : "") + ">▶</button>" +
+    '<button class="pg-btn" onclick="goPage(' + totalPages + ')" aria-label="Last page"' + (currentPage === totalPages ? " disabled" : "") + ">⏭</button>";
+  ["pagerTop", "pagerBottom"].forEach(function(id) { var el = document.getElementById(id); if (el) el.innerHTML = html; });
 }
 
 function getPickupFiltered() {
