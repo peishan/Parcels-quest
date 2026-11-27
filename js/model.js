@@ -86,7 +86,36 @@
     return n;
   }
 
+  var STATUS_ORDER = { Pending: 0, Scheduled: 1, Delivered: 2, Refunded: 3, Cancelled: 4, Consolidated: 5 };
+  var FILL_FIELDS = ["pickupCode", "boughtBy", "ordered", "expected", "expectedEnd", "arrived", "delivered", "reorderDays"];
+
+  /**
+   * Merge `remote` parcels INTO the `local` array (mutates local). Never removes or overwrites local data:
+   *  - unknown tracking numbers are appended with fresh ids
+   *  - for known ones, only a more advanced status and previously-empty fields are taken from remote
+   * Returns { added, updated }.
+   */
+  function mergeParcels(local, remote) {
+    var byTrack = {}, maxId = 0, added = 0, updated = 0;
+    local.forEach(function (p) { byTrack[p.tracking] = p; if (p.id > maxId) maxId = p.id; });
+    (remote || []).forEach(function (r) {
+      if (!r || !r.tracking) return;
+      var l = byTrack[r.tracking];
+      if (!l) {
+        var c = JSON.parse(JSON.stringify(r)); c.id = ++maxId;
+        local.push(c); byTrack[c.tracking] = c; added++;
+        return;
+      }
+      var changed = false;
+      if ((STATUS_ORDER[r.status] || 0) > (STATUS_ORDER[l.status] || 0)) { l.status = r.status; changed = true; }
+      FILL_FIELDS.forEach(function (k) { if (!l[k] && r[k]) { l[k] = r[k]; changed = true; } });
+      if (changed) updated++;
+    });
+    return { added: added, updated: updated };
+  }
+
   var api = {
+    mergeParcels: mergeParcels,
     FOR_OPTIONS: FOR_OPTIONS, BOUGHT_OPTIONS: BOUGHT_OPTIONS, DATE_FIELDS: DATE_FIELDS,
     parseDateLoose: parseDateLoose, addDays: addDays, diffDays: diffDays, todayISO: todayISO,
     sanitizeParcel: sanitizeParcel, sanitizeParcels: sanitizeParcels

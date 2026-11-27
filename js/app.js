@@ -273,6 +273,7 @@ function dedupParcelIds() {
 
 function saveData() {
   try { ParcelModel.sanitizeParcels(parcels); } catch(e) {}
+  try { if (window.ParcelBackup) ParcelBackup.beforeSave(localStorage.getItem("parcelQuest_data"), parcels); } catch(e) {}
   try { localStorage.setItem("parcelQuest_data", JSON.stringify(parcels)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_prices", JSON.stringify(priceHistory)); } catch(e) {}
   try { localStorage.setItem("parcelQuest_player", JSON.stringify(player)); } catch(e) {}
@@ -1602,7 +1603,8 @@ function downloadFromGist() {
       if (!file) { throw new Error("parcel_quest_data.json not found in gist"); }
       var data = JSON.parse(file.content);
       if (data.parcels && Array.isArray(data.parcels) && data.parcels.length > 0) {
-        if (confirm("Download " + data.parcels.length + " parcels from Gist? This will REPLACE local data.")) {
+        if (confirm("Download " + data.parcels.length + " parcels from Gist? This will REPLACE your " + parcels.length + " local parcels." + (data.parcels.length < parcels.length ? "\n\n⚠️ The Gist has FEWER parcels than you have here." : "") + "\n\nA backup of your current data is kept automatically (Settings → Backups).")) {
+          if (window.ParcelBackup) ParcelBackup.snapshotNow("Before downloading from Gist", "safety");
           parcels = data.parcels;
           // Fix any duplicate IDs that may exist in Gist data
           if (dedupParcelIds()) {
@@ -1729,17 +1731,20 @@ function autoSyncFromGist() {
         if (!file) return;
         var data = JSON.parse(file.content);
         if (data.parcels && Array.isArray(data.parcels) && data.parcels.length > 0) {
-          parcels = data.parcels;
-          // Fix any duplicate IDs from Gist auto-sync
-          if (dedupParcelIds()) {
-            showToast("🔧 Fixed duplicate IDs from Gist auto-sync", "success");
-          }
-          if (data.priceHistory && Array.isArray(data.priceHistory)) priceHistory = data.priceHistory;
-          if (data.player && typeof data.player === "object") player = data.player;
+          // Auto-sync only ever ADDS to this device: it used to replace local data with the Gist copy,
+          // which wiped newer local parcels whenever the Gist was older.
+          var probe = ParcelModel.mergeParcels(JSON.parse(JSON.stringify(parcels)), data.parcels);
+          if ((probe.added || probe.updated) && window.ParcelBackup) ParcelBackup.snapshotNow("Before auto-sync from Gist", "safety");
+          var res = ParcelModel.mergeParcels(parcels, data.parcels);
           if (data.meta && window.setParcelMeta) setParcelMeta(data.meta, false);
-          saveData();
-          renderAll();
-          showToast("☁️ Auto-synced " + data.parcels.length + " parcels from Gist", "success");
+          if (res.added || res.updated) {
+            saveData();
+            renderAll();
+            showToast("☁️ Auto-sync merged: " + res.added + " new, " + res.updated + " updated (nothing removed)", "success");
+          }
+          if (parcels.length > data.parcels.length + 10) {
+            showToast("☁️ Your Gist is behind (" + data.parcels.length + " vs " + parcels.length + " here) — use Upload to Gist to update it", "warning");
+          }
         }
       }).catch(function(e) { console.log("Auto-sync skipped:", e.message); });
   } catch(e) {}

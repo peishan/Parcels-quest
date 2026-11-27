@@ -34,3 +34,8 @@ Driven by optional dates on each parcel: **ordered**, **estimated delivery (from
 
 ## Privacy
 No receiver names or phone numbers are stored. People are just `For` (San / Aisyah / Joel) and `Purchased by` (San / KW Liang). Note: this repo is public and earlier commits contain the old receiver names.
+
+## Data safety
+- **Auto-sync from the Gist only adds** to this device (new parcels, more advanced statuses, empty fields). It never replaces or removes local data. It used to replace everything with the Gist copy, which wiped newer local parcels whenever the Gist was older.
+- **Automatic backups** (Settings → Backups): one per day, plus a safety copy before an auto-sync merge or Gist download, and whenever a save would shrink the list by 10+ parcels / 20%. Restore or download any of them. They live in this browser, so also use **Download backup file** now and then.
+- The Gist keeps every uploaded revision (gist.github.com/<you>/<id>/revisions) — an older upload is also a backup.
