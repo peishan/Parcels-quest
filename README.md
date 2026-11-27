@@ -51,3 +51,4 @@ Settings → **Import & merge / Restore** (also in the Backups card):
 - Palette tokens live at the top of `css/style.css`: deep sea navy, dusk crimson, sunset and lantern gold; light mode is a warm parchment. Switch themes from the sidebar / More drawer.
 - **Phone-first**: a bottom tab bar (Today · Parcels · ➕ · Pickup · More), a ➕ sheet (screenshots / paste / manual), modals as bottom sheets, stat tiles as a swipeable chip row, and parcel/pickup tables rendered as cards. Desktop keeps the sidebar and tables.
 - The level badge shows an XP progress ring.
+- **Text size** (Settings, or A− / A+ in the side menu): Small / Normal / Large / Extra large, saved per device. All sizes are in `rem`, so one `html[data-text]` rule scales everything; the phone cards re-flow at Large and Extra large.

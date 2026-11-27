@@ -580,3 +580,31 @@ body { font-variant-numeric:tabular-nums; -webkit-tap-highlight-color:transparen
 /* radio chips in forms never wrap; the sidebar has the theme switch, so the floating button is retired */
 .modal label[style*="cursor:pointer"] { white-space:nowrap; }
 .theme-toggle { display:none !important; }
+
+/* ===== Text size (set on <html data-text="sm|lg|xl">; everything is in rem, so it all scales) ===== */
+html[data-text="sm"] { font-size:90%; }
+html[data-text="lg"] { font-size:115%; }
+html[data-text="xl"] { font-size:130%; }
+.side-text { display:flex; gap:8px; margin-top:8px; }
+.side-text .btn { flex:1; justify-content:center; font-weight:800; }
+.text-size-row { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+.text-size-btn { display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 4px; background:var(--surface-raised); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text); cursor:pointer; font:inherit; }
+.text-size-btn small { font-size:0.68rem; color:var(--text-secondary); }
+.text-size-btn.active { border-color:var(--accent); background:var(--accent-glow); }
+
+/* phone cards at larger text sizes: let "for" shrink (…), and give the bottom row more room */
+@media (max-width:768px) {
+  #parcelTable tr { grid-template-columns:auto auto minmax(0,1fr) auto; }
+  /* desktop columns have fixed widths (e.g. .col-price 70px); card cells size to their content instead */
+  #parcelTable td, #pickupTable td { width:auto; }
+  #parcelTable .col-for, #pickupTable .col-for { overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  #pickupTable tr { grid-template-columns:auto minmax(0,1fr) auto auto; }
+
+  html[data-text="lg"] #parcelTable tr, html[data-text="xl"] #parcelTable tr { grid-template-columns:auto auto minmax(0,1fr);
+    grid-template-areas:"plat plat status" "item item item" "track track track" "qty price for" "actions actions actions"; }
+  html[data-text="lg"] #parcelTable .col-actions, html[data-text="xl"] #parcelTable .col-actions { justify-self:end; }
+
+  html[data-text="lg"] #pickupTable tr, html[data-text="xl"] #pickupTable tr { grid-template-columns:minmax(0,1fr) auto;
+    grid-template-areas:"code status" "item item" "branch branch" "plat price" "for for" "track track"; }
+  html[data-text="lg"] #pickupTable .col-for, html[data-text="xl"] #pickupTable .col-for { justify-self:start; }
+}

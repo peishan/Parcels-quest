@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0a0d1a">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
+<script>try{var ts=localStorage.getItem("parcelQuest_textSize");if(ts)document.documentElement.setAttribute("data-text",ts)}catch(e){}</script>
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -30,6 +31,7 @@
 <div class="sidebar-footer">
 <div id="sidebarLevel">Lv. 1 Parcel Novice</div>
 <div id="saveIndicator" style="margin-top:4px;font-size:0.65rem;color:var(--text-muted);">💾 autosaved</div>
+<div class="side-text"><button class="btn" onclick="bumpTextSize(-1)" aria-label="Smaller text">A−</button><button class="btn" onclick="bumpTextSize(1)" aria-label="Larger text">A+</button></div>
 <button class="btn side-theme" onclick="toggleTheme()" title="Switch between dark and light">🌗 Theme</button>
 <div style="margin-top:6px;">v3.0</div>
 </div>
@@ -325,6 +327,19 @@
 <div style="margin-top:12px;display:flex;gap:8px;">
 <button class="btn btn-primary" onclick="findDuplicates()">🔍 Find Duplicates</button>
 <button class="btn btn-danger" onclick="removeDuplicatePrompt()">🗑️ Remove Duplicate</button>
+</div>
+</div>
+
+<div class="card">
+<div class="card-header"><div class="card-title">🔠 Text size</div></div>
+<div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;padding-bottom:10px;">
+<p>Makes all text in the app larger or smaller on this device. You can also use A− / A+ in the side menu.</p>
+</div>
+<div class="text-size-row" role="group" aria-label="Text size">
+<button class="text-size-btn" data-size="sm" onclick="setTextSize('sm')"><span style="font-size:0.85rem">Aa</span><small>Small</small></button>
+<button class="text-size-btn" data-size="md" onclick="setTextSize('md')"><span style="font-size:1.05rem">Aa</span><small>Normal</small></button>
+<button class="text-size-btn" data-size="lg" onclick="setTextSize('lg')"><span style="font-size:1.25rem">Aa</span><small>Large</small></button>
+<button class="text-size-btn" data-size="xl" onclick="setTextSize('xl')"><span style="font-size:1.5rem">Aa</span><small>Extra large</small></button>
 </div>
 </div>
 
