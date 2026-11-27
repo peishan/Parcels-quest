@@ -121,6 +121,8 @@ function updateLevel() {
   if (elSub) elSub.textContent = title.subtitle;
   var elBar = document.getElementById("xpBar");
   if (elBar) elBar.style.width = pct + "%";
+  var elBadge = document.getElementById("levelBadge");
+  if (elBadge) elBadge.style.setProperty("--pct", pct.toFixed(1));
   var elCur = document.getElementById("xpCurrent");
   if (elCur) elCur.textContent = xpInLevel + " XP";
   var elNext = document.getElementById("xpNext");
@@ -380,7 +382,7 @@ function renderDashboard() {
   renderBars(countBy("category", parcels), "dashCategoryBars", CATEGORY_COLORS, parcels.length);
   var forData = countBy("for", parcels);
   var forColors = {};
-  forData.forEach(function(entry, i) { forColors[entry[0]] = ["#7c5cff","#f472b6","#4ade80","#fbbf24","#60a5fa","#a78bfa"][i % 6]; });
+  forData.forEach(function(entry, i) { forColors[entry[0]] = ["#e5485f","#f472b6","#4ade80","#fbbf24","#60a5fa","#a78bfa"][i % 6]; });
   renderBars(forData, "dashForBars", forColors, parcels.length);
   renderAchievements("dashAchievements");
 }
@@ -460,7 +462,7 @@ function renderParcels() {
     var statusClass = STATUS_COLORS[p.status] || "status-pending";
     var platformColor = PLATFORM_COLORS[p.platform] || "#888";
     var itemEsc = p.item.replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    return '<tr onclick="openModal(' + p.id + ')"><td class="col-id" style="color:var(--text-muted);font-weight:700;">' + p.id + '</td><td class="col-platform"><span class="platform-tag" style="color:' + platformColor + '">' + p.platform + '</span></td><td><span class="tracking-num">' + p.tracking + '</span></td><td><div class="item-desc" title="' + itemEsc + '">' + p.item + '</div></td><td class="col-qty">' + p.qty + '</td><td class="col-price">' + p.price.toFixed(2) + '</td><td class="col-status"><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td>' + p.for + '</td><td class="col-actions"><button class="btn" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();cycleStatusId(' + p.id + ')">🔄</button><button class="btn btn-danger" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();deleteId(' + p.id + ')">🗑️</button></td></tr>';
+    return '<tr onclick="openModal(' + p.id + ')" style="--pc:' + platformColor + '"><td class="col-id" style="color:var(--text-muted);font-weight:700;">' + p.id + '</td><td class="col-platform"><span class="platform-tag" style="color:' + platformColor + '">' + p.platform + '</span></td><td class="col-tracking"><span class="tracking-num">' + p.tracking + '</span></td><td class="col-item"><div class="item-desc" title="' + itemEsc + '">' + p.item + '</div></td><td class="col-qty">' + p.qty + '</td><td class="col-price">' + p.price.toFixed(2) + '</td><td class="col-status"><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td class="col-for">' + p.for + '</td><td class="col-actions"><button class="btn" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();cycleStatusId(' + p.id + ')">🔄</button><button class="btn btn-danger" style="padding:4px 10px;font-size:0.7rem;" onclick="event.stopPropagation();deleteId(' + p.id + ')">🗑️</button></td></tr>';
   }).join("");
 }
 function updateSelect(id, items, defaultLabel) {
@@ -551,7 +553,7 @@ function renderPickup() {
     } else if (p.for === "Joel") {
       branch = "📍 Branch not set";
     }
-    return '<tr onclick="openModal(' + p.id + ')"><td class="col-id">' + p.id + '</td><td><span class="pickup-code ' + codeClass + '">' + (p.pickupCode || "—") + '</span></td><td>' + branch + '</td><td>' + p.platform + '</td><td><span class="tracking-num">' + p.tracking + '</span></td><td><div class="item-desc">' + p.item + '</div></td><td class="col-price">' + p.price.toFixed(2) + '</td><td><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td>' + p.for + '</td></tr>';
+    return '<tr onclick="openModal(' + p.id + ')"><td class="col-id">' + p.id + '</td><td class="col-code"><span class="pickup-code ' + codeClass + '">' + (p.pickupCode || "—") + '</span></td><td class="col-branch">' + branch + '</td><td class="col-platform">' + p.platform + '</td><td class="col-tracking"><span class="tracking-num">' + p.tracking + '</span></td><td class="col-item"><div class="item-desc">' + p.item + '</div></td><td class="col-price">' + p.price.toFixed(2) + '</td><td class="col-status"><span class="status-badge ' + statusClass + '">' + p.status + '</span></td><td class="col-for">' + p.for + '</td></tr>';
   }).join("");
 }
 function setPickupFilter(filter) { currentPickupFilter = filter; renderPickup(); }

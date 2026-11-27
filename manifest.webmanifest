@@ -4,8 +4,8 @@
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#0b0b14",
-  "theme_color": "#7c5cff",
+  "background_color": "#0a0d1a",
+  "theme_color": "#0a0d1a",
   "description": "Malaysian courier parcel tracker with price comparison and idle parcel factory.",
   "orientation": "portrait-primary",
   "icons": [
