@@ -11,6 +11,7 @@ Gamified Malaysian parcel tracker (Shopee / TikTok Shop / Lazada). Static site �
 - `js/parse.js` – tracking-number parsing + import helpers (pure functions, unit-tested)
 - `js/reminders.js` – reminder rules, sale calendar, weekly review/streak, .ics export (pure, tested)
 - `js/today.js` – the Today page
+- `js/shell.js` – phone app shell: bottom tab bar, add sheet, More drawer
 - `js/importer.js` – Import modal: paste tracking numbers or read screenshots/receipts with Claude
 - `tests/*.test.js` – run all: `for t in tests/*.test.js; do node $t; done`
 
@@ -45,3 +46,8 @@ Settings → **Import & merge / Restore** (also in the Backups card):
 - **From Gist history**: lists every revision of your gist with its parcel count (★ = most parcels). Tap **Merge** to add what's missing while keeping everything you have now, or **Replace** to swap your data for that revision.
 - **From a file or pasted JSON**: a full export or just a list of parcels.
 - Merge matches a parcel by tracking number + quantity + price, so rows that share a tracking number (or have none) are kept, and merging the same backup twice adds nothing. A preview shows what will be added before anything changes, and a backup of your current data is saved first.
+
+## Look & feel ("Crimson Tide")
+- Palette tokens live at the top of `css/style.css`: deep sea navy, dusk crimson, sunset and lantern gold; light mode is a warm parchment. Switch themes from the sidebar / More drawer.
+- **Phone-first**: a bottom tab bar (Today · Parcels · ➕ · Pickup · More), a ➕ sheet (screenshots / paste / manual), modals as bottom sheets, stat tiles as a swipeable chip row, and parcel/pickup tables rendered as cards. Desktop keeps the sidebar and tables.
+- The level badge shows an XP progress ring.

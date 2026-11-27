@@ -127,6 +127,8 @@
     $("todaySubtitle").textContent = d.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" }) + " · Old World ledger — the days before Daybreak";
     var nb = $("navTodayCount");
     if (nb) { nb.textContent = urgent.length; nb.style.display = urgent.length ? "" : "none"; }
+    var bb = $("bnTodayCount");
+    if (bb) { bb.textContent = urgent.length; bb.style.display = urgent.length ? "" : "none"; }
 
     // stat tiles
     var tiles = $("todayStats"); tiles.textContent = "";

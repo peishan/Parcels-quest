@@ -2,20 +2,19 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Parcel Quest — Gamified Parcel Tracker</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#7c5cff">
+<meta name="theme-color" content="#0a0d1a">
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 <div class="app">
-<button class="mobile-toggle" onclick="toggleSidebar()" id="mobileToggle">☰</button>
 <aside class="sidebar" id="sidebar">
 <div class="sidebar-header">
-<div class="sidebar-logo"><div class="sidebar-logo-icon">📦</div><div>Parcel Quest</div></div>
+<div class="sidebar-logo"><div class="sidebar-logo-icon">📦</div><div>Parcel Quest<div class="sidebar-tag">Old World ledger</div></div></div>
 </div>
 <nav class="nav">
 <div class="nav-item active" data-section="today" onclick="showSection('today')"><span>🌅</span> Today <span class="badge warn" id="navTodayCount" style="display:none">0</span></div>
@@ -31,9 +30,11 @@
 <div class="sidebar-footer">
 <div id="sidebarLevel">Lv. 1 Parcel Novice</div>
 <div id="saveIndicator" style="margin-top:4px;font-size:0.65rem;color:var(--text-muted);">💾 autosaved</div>
-<div style="margin-top:2px;">v2.7</div>
+<button class="btn side-theme" onclick="toggleTheme()" title="Switch between dark and light">🌗 Theme</button>
+<div style="margin-top:6px;">v3.0</div>
 </div>
 </aside>
+<div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
 <main class="main" id="main">
 <input type="file" id="csvInput" accept=".csv" style="display:none" onchange="handleFileSelect(event)">
 
@@ -41,7 +42,7 @@
 <div class="section active" id="section-today">
 <div class="page-header">
 <div><div class="page-title">🌅 Today</div><div class="page-subtitle" id="todaySubtitle">Old World ledger — the days before Daybreak</div></div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary" onclick="openImport()">📥 Import</button><button class="btn" onclick="exportReminderCalendar()">📅 Add to calendar (.ics)</button><button class="btn" id="notifyBtn" onclick="toggleNotifications()">🔔 Notify me</button></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary hide-phone" onclick="openImport()">📥 Import</button><button class="btn" onclick="exportReminderCalendar()">📅 Add to calendar (.ics)</button><button class="btn" id="notifyBtn" onclick="toggleNotifications()">🔔 Notify me</button></div>
 </div>
 <div id="todayStats" class="td-stats"></div>
 <div class="card"><div class="card-header"><div class="card-title">⚡ Needs attention</div><span class="imp-note" id="todayCount"></span></div><div id="todayList"></div></div>
@@ -55,12 +56,12 @@
 <div class="section" id="section-dashboard">
 <div class="page-header">
 <div><div class="page-title">🏠 Dashboard</div><div class="page-subtitle">Your parcel tracking command center</div></div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;">
+<details class="data-tools"><summary>🧰 Data tools</summary><div class="data-tools-row">
 <button class="btn btn-primary" onclick="triggerImport()">📁 Import CSV</button>
 <button class="btn" onclick="exportCSV()">💾 Export CSV</button>
 <button class="btn btn-info" onclick="exportJSON()">📋 Copy JSON</button>
 <button class="btn btn-success" onclick="importJSON()">📋 Paste JSON</button>
-</div>
+</div></details>
 </div>
 
 <div class="level-card card">
@@ -99,7 +100,7 @@
 <div class="section" id="section-parcels">
 <div class="page-header">
 <div><div class="page-title">📦 All Parcels</div><div class="page-subtitle">Manage and track every parcel</div></div>
-<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary" onclick="openImport()">📥 Import</button><button class="btn" onclick="addParcel()">➕ Add Parcel</button></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-primary hide-phone" onclick="openImport()">📥 Import</button><button class="btn hide-phone" onclick="addParcel()">➕ Add Parcel</button></div>
 </div>
 
 <div class="stats-grid" id="parcelStats">
@@ -576,6 +577,23 @@
 <button class="levelup-btn" onclick="closeLevelup()">Awesome! 🎉</button>
 </div>
 
+<nav class="bottom-nav" id="bottomNav" aria-label="Main navigation">
+<button class="bn-item active" data-section="today" onclick="showSection('today')"><span class="bn-ico">🌅</span><span class="bn-lbl">Today</span><span class="bn-badge" id="bnTodayCount" style="display:none">0</span></button>
+<button class="bn-item" data-section="parcels" onclick="showSection('parcels')"><span class="bn-ico">📦</span><span class="bn-lbl">Parcels</span></button>
+<button class="bn-add" onclick="openAddSheet()" aria-label="Add a parcel">＋</button>
+<button class="bn-item" data-section="pickup" onclick="showSection('pickup')"><span class="bn-ico">🔑</span><span class="bn-lbl">Pickup</span></button>
+<button class="bn-item" data-more="1" onclick="toggleSidebar()"><span class="bn-ico">☰</span><span class="bn-lbl">More</span></button>
+</nav>
+<div class="sheet-overlay" id="addSheet" onclick="if(event.target===this)closeAddSheet()">
+<div class="sheet" role="dialog" aria-label="Add parcels">
+<div class="sheet-grip"></div>
+<div class="sheet-title">Add parcels</div>
+<button class="sheet-btn" onclick="closeAddSheet();openImport('shots')"><span>📸</span><div><strong>From screenshots or receipts</strong><small>Claude reads the order page for you</small></div></button>
+<button class="sheet-btn" onclick="closeAddSheet();openImport('paste')"><span>📋</span><div><strong>Paste tracking numbers</strong><small>One or many, any text</small></div></button>
+<button class="sheet-btn" onclick="closeAddSheet();addParcel()"><span>✍️</span><div><strong>Add manually</strong><small>Fill in the form yourself</small></div></button>
+</div>
+</div>
+
 <div class="toast-container" id="toastContainer"></div>
 <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark mode">🌙</button>
 
@@ -588,6 +606,7 @@
 <script src="js/importer.js"></script>
 <script src="js/today.js"></script>
 <script src="js/restore.js"></script>
+<script src="js/shell.js"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
   window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function (e) { console.warn("SW register failed", e); }); });
