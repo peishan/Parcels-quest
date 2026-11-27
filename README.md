@@ -39,3 +39,9 @@ No receiver names or phone numbers are stored. People are just `For` (San / Aisy
 - **Auto-sync from the Gist only adds** to this device (new parcels, more advanced statuses, empty fields). It never replaces or removes local data. It used to replace everything with the Gist copy, which wiped newer local parcels whenever the Gist was older.
 - **Automatic backups** (Settings → Backups): one per day, plus a safety copy before an auto-sync merge or Gist download, and whenever a save would shrink the list by 10+ parcels / 20%. Restore or download any of them. They live in this browser, so also use **Download backup file** now and then.
 - The Gist keeps every uploaded revision (gist.github.com/<you>/<id>/revisions) — an older upload is also a backup.
+
+## Restoring data
+Settings → **Import & merge / Restore** (also in the Backups card):
+- **From Gist history**: lists every revision of your gist with its parcel count (★ = most parcels). Tap **Merge** to add what's missing while keeping everything you have now, or **Replace** to swap your data for that revision.
+- **From a file or pasted JSON**: a full export or just a list of parcels.
+- Merge matches a parcel by tracking number + quantity + price, so rows that share a tracking number (or have none) are kept, and merging the same backup twice adds nothing. A preview shows what will be added before anything changes, and a backup of your current data is saved first.

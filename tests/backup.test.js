@@ -30,7 +30,7 @@ t("merge never removes or overwrites local parcels (the auto-sync bug)", () => {
   const local = Array.from({ length: 600 }, (_, i) => ({ id: i + 1, tracking: "T" + i, status: i < 5 ? "Delivered" : "Pending", item: "mine" + i }));
   const gist = Array.from({ length: 214 }, (_, i) => ({ id: i + 1, tracking: "T" + i, status: "Pending", item: "OLD" + i }));
   const r = M.mergeParcels(local, gist);
-  assert.deepStrictEqual(r, { added: 0, updated: 0 });
+  assert.deepStrictEqual(r, { added: 0, updated: 0, sharedTracking: 0 });
   assert.strictEqual(local.length, 600);
   assert.strictEqual(local[0].item, "mine0"); assert.strictEqual(local[0].status, "Delivered", "status never regresses");
 });
@@ -38,8 +38,33 @@ t("merge adds parcels that exist only remotely, with safe fresh ids, and fills e
   const local = [{ id: 5, tracking: "A", status: "Pending" }];
   const remote = [{ id: 1, tracking: "A", status: "Delivered", delivered: "2026-11-07", boughtBy: "KW Liang" }, { id: 5, tracking: "B", status: "Pending" }, { tracking: "" }];
   const r = M.mergeParcels(local, remote);
-  assert.deepStrictEqual(r, { added: 1, updated: 1 });
+  assert.deepStrictEqual(r, { added: 1, updated: 1, sharedTracking: 0 });
   assert.deepStrictEqual(local.map(p => p.id), [5, 6], "no id collision");
   assert.deepStrictEqual([local[0].status, local[0].delivered, local[0].boughtBy], ["Delivered", "2026-11-07", "KW Liang"]);
+});
+t("exact merge (restore mode): keeps rows that share a tracking number, keeps rows with no tracking, never duplicates the same parcel", () => {
+  const local = [{ id: 1, tracking: "A", platform: "Lazada", item: "Power bank (typo fixed locally)", qty: 1, price: 87.06, status: "Pending" }];
+  const remote = [
+    { id: 1, tracking: "A", platform: "Lazada", item: "Power bank", qty: 1, price: 87.06, status: "Delivered" },          // same parcel, item text differs -> matched
+    { id: 2, tracking: "A", platform: "Lazada", item: "Placeholder", qty: 1, price: 0, status: "Cancelled" },              // shares tracking, different parcel -> added
+    { id: 3, tracking: "", platform: "Shopee", item: "Cash purchase", qty: 2, price: 30, status: "Delivered" },            // no tracking -> kept
+    { id: 4, tracking: "B", platform: "Shopee", item: "Tote", qty: 12, price: 718.8, status: "Pending" }];
+  const plan = M.planMerge(local, remote, { exact: true });
+  assert.deepStrictEqual(plan, { added: 3, updated: 1, sharedTracking: 1 });
+  assert.strictEqual(local.length, 1, "planMerge must not touch the real list");
+  const r = M.mergeParcels(local, remote, { exact: true });
+  assert.deepStrictEqual(r, plan);
+  assert.strictEqual(local.length, 4);
+  assert.strictEqual(local[0].item, "Power bank (typo fixed locally)", "local text wins");
+  assert.strictEqual(local[0].status, "Delivered", "but a more advanced status is taken");
+  assert.deepStrictEqual(local.map(p => p.id), [1, 2, 3, 4]);
+  // idempotent: merging the same file again adds nothing
+  assert.deepStrictEqual(M.mergeParcels(local, remote, { exact: true }), { added: 0, updated: 0, sharedTracking: 0 });
+});
+t("restoring 600 into a 214 subset adds exactly the missing 386", () => {
+  const all = Array.from({ length: 600 }, (_, i) => ({ id: i + 1, tracking: "T" + i, platform: "Shopee", item: "i" + i, qty: 1 + (i % 3), price: i + 0.5, status: "Pending" }));
+  const local = all.slice(0, 214).map(p => Object.assign({}, p, { item: p.item + " edited" }));
+  const r = M.mergeParcels(local, all, { exact: true });
+  assert.deepStrictEqual([r.added, r.updated, local.length], [386, 0, 600]);
 });
 console.log("\n" + n + " tests passed");

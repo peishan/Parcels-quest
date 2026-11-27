@@ -286,8 +286,12 @@
 <button class="btn btn-info" onclick="exportJSON()">📋 Copy JSON</button>
 </div>
 <div class="settings-row">
-<div><div class="settings-label">Import JSON</div><div class="settings-desc">Paste JSON data from another device</div></div>
+<div><div class="settings-label">Import JSON</div><div class="settings-desc">Paste JSON data from another device (replaces everything)</div></div>
 <button class="btn btn-success" onclick="importJSON()">📋 Paste JSON</button>
+</div>
+<div class="settings-row">
+<div><div class="settings-label">Import &amp; merge / Restore</div><div class="settings-desc">Add missing parcels from a file, pasted JSON or your Gist history — keeps what you have</div></div>
+<button class="btn btn-primary" onclick="openRestore()">♻️ Open</button>
 </div>
 <div class="settings-row">
 <div><div class="settings-label">Export Price History</div><div class="settings-desc">Download price tracking data as CSV</div></div>
@@ -328,7 +332,7 @@
 <div style="font-size:0.85rem;color:var(--text-secondary);line-height:1.7;padding-bottom:10px;">
 <p>Automatic copies are kept on this device: one a day, plus a safety copy whenever a save, sync or import would shrink your list. <strong>Restore</strong> brings one back (your current data is backed up first). Download a file now and then and keep it outside this browser.</p>
 </div>
-<div class="imp-actions"><button class="btn btn-primary" onclick="ParcelBackup.downloadCurrent()">💾 Download backup file</button><button class="btn" onclick="ParcelBackup.snapshotNow('Manual backup','safety');ParcelBackup.render();showToast('🛟 Backup saved','success')">➕ Back up now</button></div>
+<div class="imp-actions"><button class="btn btn-primary" onclick="ParcelBackup.downloadCurrent()">💾 Download backup file</button><button class="btn" onclick="ParcelBackup.snapshotNow('Manual backup','safety');ParcelBackup.render();showToast('🛟 Backup saved','success')">➕ Back up now</button><button class="btn btn-primary" onclick="openRestore()">♻️ Import &amp; merge / Restore</button></div>
 <div id="backupList"></div>
 </div>
 
@@ -441,6 +445,31 @@
 </div>
 <div id="impPreview"></div>
 <div id="impFooter" class="imp-footer" style="display:none;"><span id="impCount" class="imp-note"></span><button class="btn btn-primary" id="impConfirmBtn" onclick="importConfirm()">✅ Import selected</button></div>
+</div>
+</div>
+
+<!-- Restore / Import & merge Modal -->
+<div class="modal-overlay" id="restoreModal" onclick="if(event.target===this)closeRestore()">
+<div class="modal import-modal">
+<button class="modal-close" onclick="closeRestore()">&times;</button>
+<h2>♻️ Import &amp; merge / Restore</h2>
+<p class="imp-hint" style="margin-bottom:12px;">Merge adds what is missing and keeps everything you have now. A backup of your current data is saved before any change.</p>
+<div class="card" style="margin-bottom:12px;">
+<div class="card-header"><div class="card-title">☁️ From Gist history</div></div>
+<div class="imp-hint" style="margin-bottom:8px;">Every upload to your gist is kept as a revision. Load the list, find the one with the most parcels (★), and tap <strong>Merge</strong>.</div>
+<div class="estimator-form" style="margin-bottom:0;">
+<div class="form-group"><label>Gist ID</label><input type="text" id="rsGistId" class="imp-input" autocomplete="off" placeholder="from Settings → Gist Sync"></div>
+<div class="form-group"><label>GitHub token (gist scope)</label><input type="password" id="rsToken" class="imp-input" autocomplete="off" placeholder="ghp_… (needed for a private gist)"></div>
+</div>
+<div class="imp-actions"><button class="btn btn-primary" onclick="loadGistHistory()">📜 Load revisions</button><span id="rsStatus" class="imp-note"></span></div>
+<div id="rsRevisions"></div>
+</div>
+<div class="card" style="margin-bottom:0;">
+<div class="card-header"><div class="card-title">📄 From a file or pasted JSON</div></div>
+<input type="file" accept=".json,application/json,text/plain" onchange="restoreFileChosen(this)" style="margin-bottom:8px;font-size:0.8rem;">
+<textarea id="rsText" rows="4" class="imp-text" placeholder="…or paste the JSON here (a full export, or just the parcels list)"></textarea>
+<div class="imp-actions"><button class="btn btn-primary" onclick="restoreFromText('merge')">➕ Merge</button><button class="btn" onclick="restoreFromText('replace')">Replace everything</button></div>
+</div>
 </div>
 </div>
 
@@ -558,6 +587,7 @@
 <script src="js/app.js"></script>
 <script src="js/importer.js"></script>
 <script src="js/today.js"></script>
+<script src="js/restore.js"></script>
 <script>
 if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
   window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function (e) { console.warn("SW register failed", e); }); });

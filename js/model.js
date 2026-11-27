@@ -89,21 +89,34 @@
   var STATUS_ORDER = { Pending: 0, Scheduled: 1, Delivered: 2, Refunded: 3, Cancelled: 4, Consolidated: 5 };
   var FILL_FIELDS = ["pickupCode", "boughtBy", "ordered", "expected", "expectedEnd", "arrived", "delivered", "reorderDays"];
 
+  function matchKey(p, exact) {
+    if (!exact) return p.tracking || "";
+    // Exact mode (used for restoring): the same parcel = same tracking + qty + price. Rows that share a tracking
+    // number but differ (e.g. a cancelled placeholder) stay separate; rows with no tracking match on platform + item.
+    var base = p.tracking ? p.tracking : "|" + (p.platform || "") + "|" + String(p.item || "").trim().toLowerCase();
+    return base + "|" + (p.qty || 0) + "|" + (Math.round((+p.price || 0) * 100) / 100).toFixed(2);
+  }
+
   /**
    * Merge `remote` parcels INTO the `local` array (mutates local). Never removes or overwrites local data:
-   *  - unknown tracking numbers are appended with fresh ids
-   *  - for known ones, only a more advanced status and previously-empty fields are taken from remote
-   * Returns { added, updated }.
+   *  - parcels not present locally are appended with fresh ids
+   *  - for ones already present, only a more advanced status and previously-empty fields are taken from remote
+   * Default mode matches on tracking number only (used by auto-sync; skips rows without a tracking number).
+   * opts.exact = true matches on tracking + qty + price and also keeps rows without a tracking number (used to restore).
+   * Returns { added, updated, sharedTracking } — sharedTracking = added rows whose tracking number already existed.
    */
-  function mergeParcels(local, remote) {
-    var byTrack = {}, maxId = 0, added = 0, updated = 0;
-    local.forEach(function (p) { byTrack[p.tracking] = p; if (p.id > maxId) maxId = p.id; });
+  function mergeParcels(local, remote, opts) {
+    var exact = !!(opts && opts.exact);
+    var byKey = {}, trackings = {}, maxId = 0, added = 0, updated = 0, shared = 0;
+    local.forEach(function (p) { byKey[matchKey(p, exact)] = p; if (p.tracking) trackings[p.tracking] = true; if (p.id > maxId) maxId = p.id; });
     (remote || []).forEach(function (r) {
-      if (!r || !r.tracking) return;
-      var l = byTrack[r.tracking];
+      if (!r || (!exact && !r.tracking)) return;
+      if (exact && !r.tracking && !r.item) return;
+      var key = matchKey(r, exact), l = byKey[key];
       if (!l) {
         var c = JSON.parse(JSON.stringify(r)); c.id = ++maxId;
-        local.push(c); byTrack[c.tracking] = c; added++;
+        if (c.tracking && trackings[c.tracking]) shared++;
+        local.push(c); byKey[key] = c; if (c.tracking) trackings[c.tracking] = true; added++;
         return;
       }
       var changed = false;
@@ -111,11 +124,15 @@
       FILL_FIELDS.forEach(function (k) { if (!l[k] && r[k]) { l[k] = r[k]; changed = true; } });
       if (changed) updated++;
     });
-    return { added: added, updated: updated };
+    return { added: added, updated: updated, sharedTracking: shared };
+  }
+  /** Same as mergeParcels but on a copy, so the UI can show "this will add N" before anything changes. */
+  function planMerge(local, remote, opts) {
+    return mergeParcels(JSON.parse(JSON.stringify(local)), remote, opts);
   }
 
   var api = {
-    mergeParcels: mergeParcels,
+    mergeParcels: mergeParcels, planMerge: planMerge,
     FOR_OPTIONS: FOR_OPTIONS, BOUGHT_OPTIONS: BOUGHT_OPTIONS, DATE_FIELDS: DATE_FIELDS,
     parseDateLoose: parseDateLoose, addDays: addDays, diffDays: diffDays, todayISO: todayISO,
     sanitizeParcel: sanitizeParcel, sanitizeParcels: sanitizeParcels

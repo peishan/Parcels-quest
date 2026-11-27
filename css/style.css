@@ -412,3 +412,5 @@ body.light-mode ::-webkit-scrollbar-thumb {
 .td-bar-fill.over { background:var(--danger); }
 .td-bad { color:var(--danger); }
 @media(max-width:768px) { .td-stats { grid-template-columns:1fr; } .td-two { grid-template-columns:1fr; } .td-actions { width:100%; justify-content:flex-end; } }
+
+.rs-best { background:rgba(251,191,36,0.10); border-radius:8px; }
