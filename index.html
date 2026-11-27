@@ -120,12 +120,13 @@
 <select class="filter-select" id="categoryFilter" onchange="renderParcels()"><option value="">All Categories</option></select>
 <select class="filter-select" id="forFilter" onchange="renderParcels()"><option value="">For: everyone</option></select>
 <select class="filter-select" id="boughtFilter" onchange="renderParcels()"><option value="">Bought by: anyone</option></select>
+<select class="filter-select" id="sortFilter" onchange="setSort(this.value)" aria-label="Sort order"><option value="newest">Sort: newest first</option><option value="oldest">Sort: oldest first</option><option value="price">Sort: price, high to low</option><option value="eta">Sort: delivery date, soonest</option></select>
 </div>
 
 <div class="table-container">
 <div class="table-header">
 <span class="table-count" id="parcelTableCount">0 parcels</span>
-<div><button class="btn" style="padding:5px 10px;font-size:0.7rem;" onclick="prevPage()">◀</button><span id="pageInfo" style="font-size:0.75rem;margin:0 6px;">Page 1</span><button class="btn" style="padding:5px 10px;font-size:0.7rem;" onclick="nextPage()">▶</button></div>
+<div class="pager" id="pagerTop"></div>
 </div>
 <div style="overflow-x:auto;">
 <table>
@@ -133,6 +134,7 @@
 <tbody id="parcelTable"></tbody>
 </table>
 </div>
+<div class="table-footer"><div class="pager" id="pagerBottom"></div></div>
 </div>
 </div>
 

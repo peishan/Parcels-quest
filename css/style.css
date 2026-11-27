@@ -608,3 +608,19 @@ html[data-text="xl"] { font-size:130%; }
     grid-template-areas:"code status" "item item" "branch branch" "plat price" "for for" "track track"; }
   html[data-text="lg"] #pickupTable .col-for, html[data-text="xl"] #pickupTable .col-for { justify-self:start; }
 }
+
+/* ===== Pager + sort ===== */
+.pager { display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap; }
+.pg-btn { min-width:38px; height:34px; padding:0 10px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface-raised); color:var(--text); font-size:0.85rem; cursor:pointer; }
+.pg-btn:disabled { opacity:0.35; cursor:default; }
+.pg-btn:not(:disabled):active { transform:scale(0.95); }
+.pg-select { height:34px; padding:0 8px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface); color:var(--text); font-size:0.82rem; font-weight:700; }
+.pg-of { font-size:0.78rem; color:var(--text-secondary); }
+.table-footer { display:flex; justify-content:center; padding:12px; border-top:1px solid var(--border); }
+@media (max-width:768px) {
+  .table-header { flex-wrap:wrap; gap:8px; }
+  .table-header .pager { width:100%; }
+  .pg-btn, .pg-select { height:42px; min-width:44px; }
+  .table-footer { border-top:none; padding:14px 0 4px; }
+  #sortFilter { grid-column:1 / -1; }
+}
